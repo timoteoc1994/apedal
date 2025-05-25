@@ -185,6 +185,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/reciclador/update-location', [UbicacionreciladoresController::class, 'updateLocation']);
     });
 
+
     // Rutas para asociaciones
     Route::middleware(['role:asociacion'])->prefix('asociacion')->group(function () {
         // Obtener todas las solicitudes de mi asocion con estado pendiente
