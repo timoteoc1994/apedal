@@ -14,6 +14,7 @@ use App\Http\Controllers\MostrarSolicitudesController;
 use App\Http\Controllers\UbicacionreciladoresController;
 use App\Http\Controllers\SolicitudInmediataController;
 use App\Http\Controllers\TrackingController;
+use App\Http\Controllers\CalificarReciclador;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -122,13 +123,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Rutas para todos los usuarios
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'getProfile']);
-
+    Route::post('/auth/change-password', [ActualizarPerfilController::class, 'changePassword']);
+    Route::post('/profile/update', [ActualizarPerfilController::class, 'update']);
+    Route::post('/profile/update-with-image', [ActualizarPerfilController::class, 'updateWithImage']);
     // Rutas para ciudadanos
     Route::middleware(['role:ciudadano'])->prefix('ciudadano')->group(function () {
-        // Rutas para actualizar perfil
-        Route::post('/profile/update/ciudadanos', [ActualizarPerfilController::class, 'update']);
-        Route::post('/profile/update-with-image/ciudadanos', [ActualizarPerfilController::class, 'updateWithImage']);
-        Route::post('/auth/change-password/ciudadanos', [ActualizarPerfilController::class, 'changePassword']);
+
+
+
         //ruta guardar solicitudes agendadas
         Route::post('/ciudadanos/solicitudes', [SolicitudRecoleccionController::class, 'store']);
         //ruta obtener solicutudes por fecha
@@ -143,11 +145,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('ciudadanos/solicitudes/inmediata', [SolicitudInmediataController::class, 'buscarRecicladores']);
         // Ruta para que el ciudadano verifique el estado de su solicitud inmediata
         Route::get('ciudadanos/solicitudes/inmediata/{id}/estado', [SolicitudInmediataController::class, 'verificarEstado']);
-        // Ruta para cancelar una solicitud inmediata en curso (si pasa demasiado tiempo)
-        Route::post('ciudadanos/solicitudes/inmediata/{id}/cancelar', [SolicitudInmediataController::class, 'cancelarSolicitud']);
 
         //ruta para obtener el detalle de uns solicitud cuando sea aceptada
         Route::get('/ciudadanos/solicitudes/recoleccion/{id}', [SolicitudRecoleccionController::class, 'obtenerDetallesRecoleccion']);
+
+        //calificar al reciclador
+        Route::post('/calificar-recolector', [CalificarReciclador::class, 'calificarReciclador']);
     });
 
 
@@ -166,6 +169,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/asignacionespor/{id}', [RecicladorController::class, 'obtenerAsignacionPorId']);
         Route::get('/asignaciones/{id}', [RecicladorController::class, 'obtenerDetalleAsignacion']);
         Route::put('/asignaciones/{id}/estado', [RecicladorController::class, 'actualizarEstado']);
+
+        //ruta para actualizar la revision de los materiales y calificar al ciudadano
+        Route::put('/asignaciones/{id}/revision', [RecicladorController::class, 'actualizarRevisionMateriales']);
+
+        //ruta para ver los pendientes del reciclador 
+        Route::get('/reciclador/solicitudes/pendientes', [RecicladorController::class, 'Pendientes']);
+        //verhistorial de las solicitudes de un reciclador
+        Route::get('/reciclador/solicitudes/historial', [RecicladorController::class, 'Historial']);
+
+        //ver detalles de una solcitud de un reciclador
+        Route::get('/reciclador/solicitudes/detalles/{id}', [RecicladorController::class, 'show']);
 
         // Ruta para que el reciclador actualice su ubicación
         Route::post('/reciclador/update-location', [UbicacionreciladoresController::class, 'updateLocation']);

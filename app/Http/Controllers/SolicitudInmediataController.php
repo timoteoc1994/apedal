@@ -374,7 +374,7 @@ class SolicitudInmediataController extends Controller
      */
     public function verificarEstado($id)
     {
-        $solicitud = SolicitudRecoleccion::with('reciclador')->findOrFail($id);
+        $solicitud = SolicitudRecoleccion::findOrFail($id);
 
         // Verificar que la solicitud pertenezca al usuario autenticado
         if ($solicitud->user_id != Auth::id()) {
@@ -384,48 +384,22 @@ class SolicitudInmediataController extends Controller
             ], 403);
         }
 
+        Log::info('Verificando estado de la solicitud', [
+            'solicitud_id' => $solicitud->id,
+            'estado' => $solicitud->estado,
+            'reciclador_id' => $solicitud->reciclador_id,
+        ]);
+
         $respuesta = [
             'success' => true,
             'estado' => $solicitud->estado,
         ];
 
-        // Si ya hay un reciclador asignado, devolver su información
-        if ($solicitud->estado == 'asignado' || $solicitud->estado == 'en_camino') {
-            $respuesta['reciclador'] = [
-                'id' => $solicitud->reciclador->id,
-                'nombre' => $solicitud->reciclador->name,
-                'telefono' => $solicitud->reciclador->telefono,
-                'foto' => $solicitud->reciclador->logo_url,
-            ];
-
-            // Obtener la última ubicación conocida del reciclador
-            $ubicacion = Ubicacionreciladores::where('auth_user_id', $solicitud->reciclador->authUser->id)
-                ->orderBy('timestamp', 'desc')
-                ->first();
-
-            if ($ubicacion) {
-                $respuesta['reciclador']['ubicacion'] = [
-                    'latitud' => $ubicacion->latitude,
-                    'longitud' => $ubicacion->longitude,
-                    'actualizado' => $ubicacion->timestamp,
-                ];
-
-                // Calcular tiempo estimado de llegada basado en la distancia
-                $distancia = $this->calcularDistancia(
-                    $ubicacion->latitude,
-                    $ubicacion->longitude,
-                    $solicitud->latitud,
-                    $solicitud->longitud
-                );
-
-                // Asumiendo una velocidad promedio de 20 km/h en ciudad
-                $tiempoEstimadoMinutos = ceil(($distancia / 20) * 60);
-                $respuesta['tiempo_estimado'] = min($tiempoEstimadoMinutos, 30); // Máximo 30 minutos
-            }
-        }
+        // No necesitas nada más si no vas a mostrar datos del reciclador
 
         return response()->json($respuesta);
     }
+
 
     /**
      * Calcula la distancia entre dos puntos usando Haversine
@@ -441,67 +415,5 @@ class SolicitudInmediataController extends Controller
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
 
         return $earthRadius * $c; // Distancia en kilómetros
-    }
-
-    /**
-     * Permite al ciudadano cancelar una solicitud inmediata en curso
-     */
-    public function cancelarSolicitud($id)
-    {
-        $solicitud = SolicitudRecoleccion::findOrFail($id);
-
-        // Verificar que la solicitud pertenezca al usuario autenticado
-        if ($solicitud->user_id != Auth::id()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No tienes permiso para cancelar esta solicitud',
-            ], 403);
-        }
-
-        // Verificar que la solicitud esté en un estado cancelable
-        $estadosCancelables = ['buscando_reciclador', 'asignado'];
-
-        if (!in_array($solicitud->estado, $estadosCancelables)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No se puede cancelar la solicitud en su estado actual',
-            ], 400);
-        }
-
-        // Cancelar la solicitud
-        $solicitud->estado = 'cancelado';
-        $solicitud->comentarios = 'Cancelado por el ciudadano';
-        $solicitud->save();
-
-        // Si ya había un reciclador asignado, notificarle de la cancelación
-        if ($solicitud->reciclador_id) {
-            $reciclador = Reciclador::find($solicitud->reciclador_id);
-            if ($reciclador) {
-                // Restaurar estado del reciclador a disponible
-                $reciclador->estado = 'disponible';
-                $reciclador->save();
-
-                // Notificar al reciclador
-                $authUser = AuthUser::where('profile_id', $reciclador->id)
-                    ->where('role', 'reciclador')
-                    ->first();
-
-                if ($authUser && !empty($authUser->fcm_token)) {
-                    FirebaseService::sendNotification($authUser->id, [
-                        'title' => 'Solicitud cancelada',
-                        'body' => 'El ciudadano ha cancelado la solicitud de recolección',
-                        'data' => [
-                            'solicitud_id' => $solicitud->id,
-                            'tipo' => 'solicitud_cancelada',
-                        ]
-                    ]);
-                }
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Solicitud cancelada correctamente',
-        ]);
     }
 }

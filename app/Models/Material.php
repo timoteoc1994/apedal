@@ -13,10 +13,12 @@ class Material extends Model
         'solicitud_id',
         'tipo',
         'peso',
+        'peso_revisado'
     ];
 
     protected $casts = [
         'peso' => 'float',
+        'peso_revisado' => 'float',
     ];
 
     // Relación con solicitud

@@ -32,6 +32,10 @@ return new class extends Migration
             $table->text('comentarios')->nullable();
             $table->string('ciudad');
             $table->boolean('es_inmediata')->default(false);
+            //calificaciones
+            $table->integer('calificacion_reciclador')->nullable();
+            $table->integer('calificacion_ciudadano')->nullable();
+            $table->decimal('peso_total_revisado', 8, 2)->nullable();
             $table->timestamps();
         });
 
@@ -40,6 +44,7 @@ return new class extends Migration
             $table->foreignId('solicitud_id')->constrained('solicitudes_recoleccion')->onDelete('cascade');
             $table->string('tipo');
             $table->decimal('peso', 8, 2);
+            $table->decimal('peso_revisado', 8, 2)->nullable();
             $table->timestamps();
         });
     }

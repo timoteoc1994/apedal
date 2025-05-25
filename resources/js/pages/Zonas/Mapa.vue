@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import MapaZonas from '@/Components/MapaZonas.vue';
+import MapaZonas from '@/components/MapaZonas.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';

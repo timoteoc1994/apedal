@@ -12,13 +12,129 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Ciudadano;
 use App\Events\NuevaSolicitudInmediata;
 use App\Events\EliminacionSolicitud;
+use Illuminate\Support\Facades\DB;
+use App\Models\Material;
+//importar validator
+use Illuminate\Support\Facades\Validator;
+use App\Models\AuthUser;
+use App\Services\FirebaseService;
+use Carbon\Carbon;
 
 class RecicladorController extends Controller
 {
+    //obtener detalles de una solcitud
+    public function show($id)
+    {
+        $solicitud = SolicitudRecoleccion::where('id', $id)
+            ->where('reciclador_id', Auth::id())
+            ->with(['materiales', 'authUser.ciudadano'])
+            ->first();
+
+        if (!$solicitud) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Solicitud no encontrada'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $solicitud
+        ]);
+    }
     /**
      * Obtener todas las asignaciones del reciclador autenticado
      */
+
     // En un controlador como RecicladorController.php
+    public function Pendientes(Request $request)
+    {
+        $solicitudes = SolicitudRecoleccion::where('reciclador_id', Auth::id())
+            ->where('estado', '!=', 'completado')
+            ->select([
+                'id',
+                'fecha',
+                'hora_inicio',
+                'hora_fin',
+                'latitud',
+                'longitud',
+                'peso_total',
+                'estado',
+                'user_id' // Necesario para la relación
+            ])
+            ->with([
+                'authUser:id,email,profile_id',
+                'authUser.ciudadano:id,name,logo_url' // Agrega logo_url aquí
+            ])
+            ->latest()
+            ->get()
+            ->map(function ($solicitud) {
+                return [
+                    'id' => $solicitud->id,
+                    'fecha' => $solicitud->fecha,
+                    'hora_inicio' => $solicitud->hora_inicio,
+                    'hora_fin' => $solicitud->hora_fin,
+                    'latitud' => $solicitud->latitud,
+                    'longitud' => $solicitud->longitud,
+                    'peso_total' => $solicitud->peso_total,
+                    'estado' => $solicitud->estado,
+                    'ciudadano' => [
+                        'name' => $solicitud->authUser?->ciudadano?->name,
+                        'logo_url' => $solicitud->authUser?->ciudadano?->logo_url,
+                        'email' => $solicitud->authUser?->email,
+                    ]
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $solicitudes
+        ]);
+    }
+    public function Historial(Request $request)
+    {
+        // Inicializa la consulta base con el usuario autenticado
+        $query = SolicitudRecoleccion::where('reciclador_id', Auth::id())
+            ->where('estado', '!=', 'completado');
+
+        // Determinar el rango de fechas a usar
+        if ($request->has('fecha_inicio') || $request->has('fecha_fin')) {
+            // Si se proporcionó al menos una fecha, usamos esos parámetros
+            if ($request->has('fecha_inicio')) {
+                $fechaInicio = Carbon::parse($request->fecha_inicio)->startOfDay();
+                $query->whereDate('created_at', '>=', $fechaInicio);
+            }
+
+            if ($request->has('fecha_fin')) {
+                $fechaFin = Carbon::parse($request->fecha_fin)->endOfDay();
+                $query->whereDate('created_at', '<=', $fechaFin);
+            }
+        } else {
+            // Si no se proporcionó ninguna fecha, usamos el día actual
+            $hoy = Carbon::now()->startOfDay();
+            $finHoy = Carbon::now()->endOfDay();
+            $query->whereBetween('created_at', [$hoy, $finHoy]);
+
+            // Si no hay resultados para hoy, ampliar al mes actual
+            $conteoHoy = clone $query;
+            if ($conteoHoy->count() == 0) {
+                $query = SolicitudRecoleccion::where('user_id', Auth::id());
+                $inicioMes = Carbon::now()->startOfMonth();
+                $finMes = Carbon::now()->endOfMonth();
+                $query->whereBetween('created_at', [$inicioMes, $finMes]);
+            }
+        }
+
+        // Ejecutar la consulta final
+        $solicitudes = $query->with('materiales')
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $solicitudes
+        ]);
+    }
 
     public function obtenerAsignaciones()
     {
@@ -231,7 +347,7 @@ class RecicladorController extends Controller
 
     public function actualizarEstado(Request $request, $id)
     {
-        //imprimir lo que viene
+        //imprimir request por log
         Log::info('Actualizando estado de asignación: ' . $id);
         Log::info('Datos recibidos: ' . json_encode($request->all()));
         try {
@@ -240,60 +356,126 @@ class RecicladorController extends Controller
                 'estado' => 'required|string',
             ]);
 
-            // Obtener el usuario autenticado (debe ser un reciclador)
+            // Obtener el usuario autenticado
             $authUser = Auth::user();
-            if ($authUser->role !== 'reciclador') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Solo los recicladores pueden actualizar estados de asignaciones',
-                ], 403);
-            }
 
-            //manejar para el estado buscando reciclador
-            //log para el estado buscando reciclador
+            // Buscar la solicitud
             $solicitud = SolicitudRecoleccion::find($id);
-            Log::info('Ahora vamos a actualizar la solicitud a en camino actualmente esta en: ' . $solicitud->estado);
-            if ($request->estado === 'encamino' && $solicitud->estado === 'buscando_reciclador') {
-                //imprimir que le tomamos
-                Log::info('Le tomamos la solicitud con id: ' . $id);
-                if ($solicitud) {
-                    $solicitud->estado = 'en_camino';
-                    $solicitud->reciclador_id = $authUser->id;
-                    $solicitud->save();
 
-                    log::info('Dispara evento a solicitud con id:' . $id . ' y para el usuario con id' . $authUser->id);
-                    //disparar el NuevaSolicitudInmediata evento para todos los ids_disponibles que es json
-
-                    //disparar el evento NuevaSolicitudInmediata para todos los ids_disponibles que es json
-                    $ids_disponibles = json_decode($solicitud->ids_disponibles);
-                    foreach ($ids_disponibles as $id_disponible) {
-                        log::info('Disparando el evento para eliminar la solicitud de los otros usuarios');
-                        EliminacionSolicitud::dispatch($solicitud, $id_disponible);
-                    }
-
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Actualizado correctamente',
-                    ]);
-                }
-                //eliminamos de pronto no haygan aceptado
-                $solicitud = SolicitudRecoleccion::find($id);
-                EliminacionSolicitud::dispatch($solicitud, Auth::user()->id);
+            // Verificar si la solicitud existe
+            if (!$solicitud) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No existe esa solicitud',
-                ], 500);
-            } else {
-                //eliminamos de pronto no haygan aceptado
-                $solicitud = SolicitudRecoleccion::find($id);
-                EliminacionSolicitud::dispatch($solicitud, Auth::user()->id);
-                Log::info('No le tomamos la solicitud con id: ' . $id);
+                ], 404); // Cambiado a 404 (Not Found) que es más apropiado
+            }
+            //imprimir el estadp del requst
+            Log::info('Estado recibido: ' . $request->estado . ' y el estado de la solicitud es: ' . $solicitud->estado);
+
+            // Manejar el estado "en_camino" esto para es inmediata la solciitud
+            if ($request->estado === 'encamino' && $solicitud->estado === 'buscando_reciclador') {
+                $solicitud->estado = 'en_camino';
+                $solicitud->reciclador_id = $authUser->id;
+                $solicitud->save();
+
+                // Disparar eventos para eliminar solicitudes
+                $ids_disponibles = json_decode($solicitud->ids_disponibles);
+                foreach ($ids_disponibles as $id_disponible) {
+                    EliminacionSolicitud::dispatch($solicitud, $id_disponible);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Solicitud actualizada a en camino correctamente',
+                    'solicitud' => $solicitud
+                ], 200);
+            }
+            // Manejar el estado "pendiente"
+            else if ($request->estado === 'pendiente' && $solicitud->estado === 'en_camino') {
+                //estado de la solciitud para proceder a revisar los materiales y decir que ya llegamos
+                $solicitud->estado = $request->estado;
+                $solicitud->reciclador_id = $authUser->id;
+                $solicitud->save();
+                EliminacionSolicitud::dispatch($solicitud, $authUser->id);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Solicitud actualizada a pendiente correctamente',
+                    'solicitud' => $solicitud
+                ], 200);
+            } else if ($request->estado === 'encamino' && $solicitud->estado === 'asignado') {
+                //aqui para comenzar una solicitud ya asiganada
+                $solicitud->estado = 'en_camino';
+                $solicitud->reciclador_id = $authUser->id;
+                $solicitud->save();
+                EliminacionSolicitud::dispatch($solicitud, $authUser->id);
+                //enviar notificacion
+                FirebaseService::sendNotification($solicitud->user_id, [
+                    'title' => 'El recolector esta en camino',
+                    'body' => 'El recolector inicio a recoger tus materiales, puedes verlo el mapa',
+                    'data' => [] // Este campo es opcional pero recomendado
+                ]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Solicitud actualizada a pendiente correctamente',
+                    'solicitud' => $solicitud
+                ], 200);
+            } else if ($solicitud->estado === 'buscando_reciclador' && $request->estado === 'asignado') {
+                //esto es cuando la solicitud es agenda y guarda al 
+                $solicitud->estado = $request->estado;
+                $solicitud->reciclador_id = $authUser->id;
+                $solicitud->save();
+
+                $ids_disponibles = json_decode($solicitud->ids_disponibles);
+                foreach ($ids_disponibles as $id_disponible) {
+                    EliminacionSolicitud::dispatch($solicitud, $id_disponible);
+                }
+                //obtener el nombre del reciclador
+                $reciclador = AuthUser::where('id', $solicitud->reciclador_id)->first();
+                $nombreReciclador = reciclador::where('id', $reciclador->profile_id)->first();
+
+                //enviar notificacion
+                FirebaseService::sendNotification($solicitud->user_id, [
+                    'title' => 'Tu solicitud agendada fue aceptada',
+                    'body' => 'Puedes revisarla en tu historial, el reciclador asignado es ' . $nombreReciclador->name,
+                    'data' => [] // Este campo es opcional pero recomendado
+                ]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Solicitud actualizada a pendiente correctamente',
+                    'solicitud' => $solicitud
+                ], 200); // Código 409 (Conflict) es más apropiado
+            }
+            // Si la solicitud ya fue tomada
+            else if ($solicitud->estado === 'en_camino' && $request->estado === 'en_camino') {
+                EliminacionSolicitud::dispatch($solicitud, $authUser->id);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Esta solicitud ya fue tomada',
-                ], 500);
+                ], 409); // Código 409 (Conflict) es más apropiado
+            } else if ($solicitud->estado === 'asignado' && $request->estado === 'asignado') {
+                EliminacionSolicitud::dispatch($solicitud, $authUser->id);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta solicitud ya fue tomada',
+                ], 409); // Código 409 (Conflict) es más apropiado
             }
+            // Cualquier otra combinación de estados no válida
+            else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cambio de estado no permitido: ' . $solicitud->estado . ' -> ' . $request->estado,
+                ], 400); // Bad Request para estados inválidos
+            }
+        } catch (ValidationException $e) {
+            // Error específico para validación
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $e->errors(),
+            ], 422); // Unprocessable Entity para errores de validación
         } catch (\Exception $e) {
+            // Cualquier otro error
             return response()->json([
                 'success' => false,
                 'message' => 'Error al actualizar estado: ' . $e->getMessage(),
@@ -367,6 +549,7 @@ class RecicladorController extends Controller
 
     public function validarCambioEstadoRequest(Request $request)
     {
+
         try {
             $usuario = Auth::user();
 
@@ -435,5 +618,110 @@ class RecicladorController extends Controller
             'puede_cambiar' => true,
             'mensaje' => 'Puedes cambiar tu estado'
         ];
+    }
+    /**
+     * Actualizar revisión de materiales y calificación
+     * 
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function actualizarRevisionMateriales(Request $request, $id)
+    {
+        //imprimir lo que llega
+        Log::info('Datos recibidos: ' . json_encode($request->all()));
+        //imprimir id
+        Log::info('ID de la solicitud: ' . $id);
+        try {
+            $user = Auth::user();
+            $validator = Validator::make($request->all(), [
+                'materiales' => 'required|array',
+                'materiales.*.id' => 'required|exists:materiales,id',
+                'materiales.*.tipo' => 'required|string',
+                'materiales.*.peso' => 'required|numeric|min:0',
+                'peso_total' => 'required|numeric|min:0',
+                'calificacion' => 'required|integer|min:1|max:5',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Datos inválidos',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Obtener la solicitud
+            $solicitud = SolicitudRecoleccion::find($id);
+
+            if (!$solicitud) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Solicitud no encontrada'
+                ], 404);
+            }
+
+            // Verificar que la solicitud pertenezca al reciclador
+            if ($solicitud->reciclador_id != $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permiso para actualizar esta solicitud'
+                ], 403);
+            }
+
+            // Verificar que la solicitud esté en un estado válido para revisión
+            if (!in_array($solicitud->estado, ['pendiente', 'en_camino'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede revisar una solicitud en estado ' . $solicitud->estado
+                ], 400);
+            }
+
+            // Iniciar transacción
+            DB::beginTransaction();
+
+            try {
+                // Actualizar peso total revisado
+                $solicitud->peso_total_revisado = $request->peso_total;
+
+                // Actualizar calificación del ciudadano
+                $solicitud->calificacion_ciudadano = $request->calificacion;
+
+                // Actualizar el estado a completado
+                $solicitud->estado = 'completado';
+                $solicitud->fecha_completado = now();
+
+                $solicitud->save();
+
+                // Actualizar materiales
+                foreach ($request->materiales as $materialData) {
+                    $material = Material::find($materialData['id']);
+
+                    // Verificar que el material pertenezca a la solicitud
+                    if ($material && $material->solicitud_id == $id) {
+                        $material->peso_revisado = $materialData['peso'];
+                        $material->save();
+                    }
+                }
+
+                // Confirmar transacción
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Revisión de materiales y calificación guardadas correctamente'
+                ]);
+            } catch (\Exception $e) {
+                // Revertir transacción en caso de error
+                DB::rollBack();
+                throw $e;
+            }
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar revisión de materiales: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar revisión de materiales: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

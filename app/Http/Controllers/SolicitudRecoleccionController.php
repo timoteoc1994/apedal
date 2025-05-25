@@ -16,6 +16,7 @@ use App\Models\AuthUser;
 use App\Models\Asociacion;
 use App\Models\Zona;
 use Illuminate\Support\Facades\Log;
+use App\Events\EliminacionSolicitud;
 
 //los demas
 use Illuminate\Support\Facades\DB;
@@ -287,7 +288,33 @@ class SolicitudRecoleccionController extends Controller
      * @param array $punto2 ['lat' => float, 'lng' => float]
      * @return float Distancia en kilómetros
      */
+    private function calcularDistancia($punto1, $punto2)
+    {
+        // Radio de la Tierra en kilómetros
+        $radioTierra = 6371;
 
+        // Convertir latitudes y longitudes de grados a radianes
+        $lat1 = deg2rad($punto1['lat']);
+        $lng1 = deg2rad($punto1['lng']);
+        $lat2 = deg2rad($punto2['lat']);
+        $lng2 = deg2rad($punto2['lng']);
+
+        // Diferencias de latitud y longitud
+        $dLat = $lat2 - $lat1;
+        $dLng = $lng2 - $lng1;
+
+        // Fórmula de Haversine
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos($lat1) * cos($lat2) *
+            sin($dLng / 2) * sin($dLng / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        // Distancia en kilómetros
+        $distancia = $radioTierra * $c;
+
+        return $distancia;
+    }
     /**
      * Obtener los IDs de todos los recicladores de una asociación
      * 
@@ -480,7 +507,7 @@ class SolicitudRecoleccionController extends Controller
 
 
 
-        // Enviar notificación por firebase al usuario que creó la solicitud
+        /* // Enviar notificación por firebase al usuario que creó la solicitud
         $user = AuthUser::find(Auth::id());
         if ($user && $user->fcm_token) {
             $this->enviarNotificacion(
@@ -493,7 +520,7 @@ class SolicitudRecoleccionController extends Controller
                     'fecha' => $solicitud->fecha
                 ]
             );
-        }
+        } */
 
         // Enviar notificación a la asociacion quien debe retirar
         // Enviar notificación a la asociación que debe atender la solicitud
@@ -565,7 +592,7 @@ class SolicitudRecoleccionController extends Controller
             ], 404);
         }
 
-        if ($solicitud->estado !== 'pendiente') {
+        if ($solicitud->estado !== 'buscando_reciclador') {
             return response()->json([
                 'success' => false,
                 'message' => 'Solo se pueden cancelar solicitudes pendientes'
@@ -575,27 +602,14 @@ class SolicitudRecoleccionController extends Controller
         // Actualizar estado a 'cancelado'
         $solicitud->update(['estado' => 'cancelado']);
 
-        // Enviar notificación a la asociación que esa solicitud fue cancelada
-        $asociacion_id = $solicitud->asociacion_id;
-        if ($asociacion_id) {
-            // Buscar el usuario de esta asociación que tenga token FCM
-            $usuarioAsociacion = AuthUser::find($asociacion_id);
-
-            if ($usuarioAsociacion && $usuarioAsociacion->fcm_token) {
-                $this->enviarNotificacion2(
-                    $usuarioAsociacion->fcm_token,
-                    'Solicitud cancelada',
-                    'Una solicitud de recolección ha sido cancelada por el usuario.',  // Mensaje corregido
-                    [
-                        'solicitud_id' => (string)$solicitud->id,
-                        'tipo' => 'solicitud_cancelada',
-                        'asociacion_id' => (string)$asociacion_id,
-                        'timestamp' => time(),  // Asegurarse de incluir el timestamp
-                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK',  // Necesario para Flutter
-                    ]
-                );
-            }
+        //disparar evento de eliminar de la lista
+        //disparar el evento NuevaSolicitudInmediata para todos los ids_disponibles que es json
+        $ids_disponibles = json_decode($solicitud->ids_disponibles);
+        foreach ($ids_disponibles as $id_disponible) {
+            log::info('Disparando el evento para eliminar la solicitud de los otros usuarios');
+            EliminacionSolicitud::dispatch($solicitud, $id_disponible);
         }
+
 
         return response()->json([
             'success' => true,

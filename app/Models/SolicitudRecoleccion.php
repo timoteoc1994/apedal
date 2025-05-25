@@ -30,7 +30,10 @@ class SolicitudRecoleccion extends Model
         'comentarios',
         'ciudad',
         'ids_disponibles',
-        'es_inmediata'
+        'es_inmediata',
+        'calificacion_reciclador',
+        'calificacion_ciudadano',
+        'peso_total_revisado',
     ];
 
     protected $casts = [
@@ -40,6 +43,7 @@ class SolicitudRecoleccion extends Model
         'longitud' => 'float',
         'peso_total' => 'float',
         'es_inmediata' => 'boolean',
+        'peso_total_revisado' => 'float',
     ];
 
     // Relación con materiales

@@ -47,6 +47,8 @@ class FirebaseService
         try {
             // Obtener el token FCM del usuario
             $user = AuthUser::find($userId);
+            Log::warning('datos del usuario: ' . $user->toJson());
+            Log::warning('Token FCM del usuario: ' . $user->fcm_token);
 
             if (!$user || empty($user->fcm_token)) {
                 Log::warning('No se pudo enviar notificación: Token FCM no disponible', [
