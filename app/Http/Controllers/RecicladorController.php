@@ -758,60 +758,94 @@ class RecicladorController extends Controller
                 'ultima_sincronizacion' => $ultimaSincronizacion
             ]);
 
-            // ⬇️ SOLO SOLICITUDES BUSCANDO RECICLADOR (eliminar asignadas directamente) ⬇️
+            // DETECTAR SI ES RECONEXIÓN RECIENTE O SINCRONIZACIÓN INICIAL
+            $esReconexionReciente = false;
+            $esPrimeraSincronizacion = !$ultimaSincronizacion;
+
+            if ($ultimaSincronizacion) {
+                $minutosDesdeUltima = now()->diffInMinutes($ultimaSincronizacion);
+                $esReconexionReciente = $minutosDesdeUltima < 10; // Menos de 10 minutos = reconexión
+            }
+
+            Log::info('Tipo de sincronización', [
+                'es_primera_sincronizacion' => $esPrimeraSincronizacion,
+                'es_reconexion_reciente' => $esReconexionReciente,
+                'minutos_desde_ultima' => $ultimaSincronizacion ? now()->diffInMinutes($ultimaSincronizacion) : 'N/A'
+            ]);
+
+            // OBTENER SOLICITUDES BUSCANDO RECICLADOR
             $queryBuscandoReciclador = SolicitudRecoleccion::where('estado', 'buscando_reciclador');
 
-            // Si tiene última sincronización, filtrar por solicitudes nuevas
-            if ($ultimaSincronizacion) {
+            // Solo filtrar por fecha si NO es reconexión reciente y NO es primera vez
+            if (!$esReconexionReciente && !$esPrimeraSincronizacion) {
                 $queryBuscandoReciclador->where('created_at', '>', $ultimaSincronizacion);
             }
 
             $solicitudesBuscandoReciclador = $queryBuscandoReciclador->get();
 
-            Log::info('Solicitudes buscando reciclador (todas)', [
+            Log::info('Solicitudes buscando reciclador encontradas', [
                 'count' => $solicitudesBuscandoReciclador->count(),
-                'filtradas_por_fecha' => $ultimaSincronizacion ? 'Sí' : 'No'
+                'aplicado_filtro_fecha' => (!$esReconexionReciente && !$esPrimeraSincronizacion)
             ]);
 
-            // FILTRAR SOLICITUDES DONDE ESTÁ EN IDS_DISPONIBLES Y NO HA SIDO NOTIFICADO
-            $solicitudesParaNotificar = $solicitudesBuscandoReciclador->filter(function ($solicitud) use ($authUser) {
-                // Verificar si está en ids_disponibles
+            // FILTRAR SOLICITUDES DONDE ESTÁ EN IDS_DISPONIBLES
+            $solicitudesDisponibles = $solicitudesBuscandoReciclador->filter(function ($solicitud) use ($authUser) {
                 $idsDisponibles = json_decode($solicitud->ids_disponibles, true) ?? [];
-                $estaEnIds = in_array($authUser->id, $idsDisponibles) ||
+                return in_array($authUser->id, $idsDisponibles) ||
                     in_array((string)$authUser->id, array_map('strval', $idsDisponibles));
-
-                if (!$estaEnIds) {
-                    return false;
-                }
-
-                // Verificar si ya fue notificado
-                $recicladoresNotificados = json_decode($solicitud->recicladores_notificados, true) ?? [];
-                $yaNotificado = in_array($authUser->id, $recicladoresNotificados) ||
-                    in_array((string)$authUser->id, array_map('strval', $recicladoresNotificados));
-
-                return !$yaNotificado;
             });
 
-            Log::info('Solicitudes filtradas para notificar', [
-                'count' => $solicitudesParaNotificar->count(),
-                'ids' => $solicitudesParaNotificar->pluck('id')->toArray()
+            Log::info('Solicitudes donde el reciclador está disponible', [
+                'count' => $solicitudesDisponibles->count(),
+                'ids' => $solicitudesDisponibles->pluck('id')->toArray()
             ]);
 
-            // MARCAR SOLICITUDES COMO NOTIFICADAS
-            foreach ($solicitudesParaNotificar as $solicitud) {
-                $recicladoresNotificados = json_decode($solicitud->recicladores_notificados, true) ?? [];
+            // LÓGICA DE NOTIFICACIÓN MEJORADA
+            if ($esReconexionReciente || $esPrimeraSincronizacion) {
+                // CASO 1: Reconexión reciente o primera vez - devolver todas las disponibles
+                $solicitudesParaNotificar = $solicitudesDisponibles;
 
-                if (!in_array($authUser->id, $recicladoresNotificados)) {
-                    $recicladoresNotificados[] = $authUser->id;
-                    $solicitud->recicladores_notificados = json_encode($recicladoresNotificados);
-                    $solicitud->save();
-                }
+                Log::info('Caso: Reconexión/Primera vez - incluyendo todas las disponibles', [
+                    'count' => $solicitudesParaNotificar->count()
+                ]);
+            } else {
+                // CASO 2: Sincronización normal - filtrar por no notificadas
+                $solicitudesParaNotificar = $solicitudesDisponibles->filter(function ($solicitud) use ($authUser) {
+                    $recicladoresNotificados = json_decode($solicitud->recicladores_notificados, true) ?? [];
+                    $yaNotificado = in_array($authUser->id, $recicladoresNotificados) ||
+                        in_array((string)$authUser->id, array_map('strval', $recicladoresNotificados));
+                    return !$yaNotificado;
+                });
+
+                Log::info('Caso: Sincronización normal - filtrando no notificadas', [
+                    'count' => $solicitudesParaNotificar->count()
+                ]);
             }
 
-            // CARGAR RELACIONES PARA SOLICITUDES NUEVAS
+            // MARCAR COMO NOTIFICADAS (solo en sincronización normal, no en reconexiones)
+            if (!$esReconexionReciente) {
+                foreach ($solicitudesParaNotificar as $solicitud) {
+                    $recicladoresNotificados = json_decode($solicitud->recicladores_notificados, true) ?? [];
+
+                    if (!in_array($authUser->id, $recicladoresNotificados)) {
+                        $recicladoresNotificados[] = $authUser->id;
+                        $solicitud->recicladores_notificados = json_encode($recicladoresNotificados);
+                        $solicitud->save();
+
+                        Log::info('Solicitud marcada como notificada', [
+                            'solicitud_id' => $solicitud->id,
+                            'recicladores_notificados' => $recicladoresNotificados
+                        ]);
+                    }
+                }
+            } else {
+                Log::info('Reconexión reciente - NO marcando como notificadas para preservar estado');
+            }
+
+            // CARGAR RELACIONES
             $solicitudesParaNotificar->load(['authUser', 'authUser.ciudadano', 'materiales']);
 
-            // ⬇️ SOLO LAS SOLICITUDES PARA NOTIFICAR (sin asignadas directamente) ⬇️
+            // ORDENAR RESULTADOS
             $asignacionesOrdenadas = $solicitudesParaNotificar
                 ->sortByDesc('created_at')
                 ->values();
@@ -822,7 +856,8 @@ class RecicladorController extends Controller
 
             Log::info('====== RESULTADO SINCRONIZACIÓN ======', [
                 'total_asignaciones' => $asignacionesOrdenadas->count(),
-                'nuevas_para_notificar' => $solicitudesParaNotificar->count(),
+                'solicitudes_para_notificar' => $solicitudesParaNotificar->count(),
+                'tipo_sincronizacion' => $esReconexionReciente ? 'reconexion' : ($esPrimeraSincronizacion ? 'primera' : 'normal'),
                 'nueva_sincronizacion' => now()
             ]);
 
@@ -833,8 +868,10 @@ class RecicladorController extends Controller
                 'sync_info' => [
                     'timestamp' => now(),
                     'nuevas_solicitudes' => $solicitudesParaNotificar->count(),
-                    'asignaciones_directas' => 0, // Ya no incluimos asignaciones directas
-                    'es_primera_sincronizacion' => !$ultimaSincronizacion
+                    'asignaciones_directas' => 0,
+                    'es_primera_sincronizacion' => $esPrimeraSincronizacion,
+                    'es_reconexion_reciente' => $esReconexionReciente,
+                    'tipo_sincronizacion' => $esReconexionReciente ? 'reconexion' : ($esPrimeraSincronizacion ? 'primera' : 'normal')
                 ]
             ]);
         } catch (\Exception $e) {

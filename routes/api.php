@@ -15,6 +15,7 @@ use App\Http\Controllers\UbicacionreciladoresController;
 use App\Http\Controllers\SolicitudInmediataController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\CalificarReciclador;
+use App\Http\Controllers\MapaAsocicacion;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -80,6 +81,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         //calificar al reciclador
         Route::post('/calificar-recolector', [CalificarReciclador::class, 'calificarReciclador']);
+        //Obtener asociaciones para el mapa
+        Route::get('/asociaciones', [MapaAsocicacion::class, 'getAsociaciones']);
     });
 
 
