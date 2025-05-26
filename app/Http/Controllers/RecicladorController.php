@@ -410,9 +410,12 @@ class RecicladorController extends Controller
                 EliminacionSolicitud::dispatch($solicitud, $authUser->id);
                 //enviar notificacion
                 FirebaseService::sendNotification($solicitud->user_id, [
-                    'title' => 'El recolector esta en camino',
-                    'body' => 'El recolector inicio a recoger tus materiales, puedes verlo el mapa',
-                    'data' => [] // Este campo es opcional pero recomendado
+                    'title' => 'El recolector está en camino',
+                    'body' => 'El recolector inició a recoger tus materiales',
+                    'data' => [
+                        'route' => '/reciclador_asignado',
+                        'solicitud_id' => (string)$solicitud->id,
+                    ]
                 ]);
                 return response()->json([
                     'success' => true,
@@ -435,9 +438,12 @@ class RecicladorController extends Controller
 
                 //enviar notificacion
                 FirebaseService::sendNotification($solicitud->user_id, [
-                    'title' => 'Tu solicitud agendada fue aceptada',
-                    'body' => 'Puedes revisarla en tu historial, el reciclador asignado es ' . $nombreReciclador->name,
-                    'data' => [] // Este campo es opcional pero recomendado
+                    'title' => $nombreReciclador->name . 'acepto tu solcitud agendada',
+                    'body' => 'Puedes ver los detalles ahora',
+                    'data' => [
+                        'route' => '/detalle_solicitud_ciudadano',
+                        'solicitud_id' => (string)$solicitud->id,
+                    ] // Este campo es opcional pero recomendado
                 ]);
                 return response()->json([
                     'success' => true,
@@ -721,6 +727,212 @@ class RecicladorController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al actualizar revisión de materiales: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Sincronizar asignaciones al abrir la aplicación
+     * Este método obtiene solicitudes nuevas desde la última sincronización
+     */
+    public function sincronizarAsignaciones(Request $request)
+    {
+        Log::info('====== INICIO SINCRONIZACIÓN ASIGNACIONES ======');
+
+        try {
+            $authUser = Auth::user();
+
+            if ($authUser->role !== 'reciclador') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Solo los recicladores pueden sincronizar asignaciones',
+                ], 403);
+            }
+
+            // Obtener información del reciclador
+            $reciclador = Reciclador::find($authUser->profile_id);
+            $ultimaSincronizacion = $reciclador->ultima_sincronizacion;
+
+            Log::info('Sincronización de reciclador', [
+                'reciclador_id' => $authUser->id,
+                'ultima_sincronizacion' => $ultimaSincronizacion
+            ]);
+
+            // ⬇️ SOLO SOLICITUDES BUSCANDO RECICLADOR (eliminar asignadas directamente) ⬇️
+            $queryBuscandoReciclador = SolicitudRecoleccion::where('estado', 'buscando_reciclador');
+
+            // Si tiene última sincronización, filtrar por solicitudes nuevas
+            if ($ultimaSincronizacion) {
+                $queryBuscandoReciclador->where('created_at', '>', $ultimaSincronizacion);
+            }
+
+            $solicitudesBuscandoReciclador = $queryBuscandoReciclador->get();
+
+            Log::info('Solicitudes buscando reciclador (todas)', [
+                'count' => $solicitudesBuscandoReciclador->count(),
+                'filtradas_por_fecha' => $ultimaSincronizacion ? 'Sí' : 'No'
+            ]);
+
+            // FILTRAR SOLICITUDES DONDE ESTÁ EN IDS_DISPONIBLES Y NO HA SIDO NOTIFICADO
+            $solicitudesParaNotificar = $solicitudesBuscandoReciclador->filter(function ($solicitud) use ($authUser) {
+                // Verificar si está en ids_disponibles
+                $idsDisponibles = json_decode($solicitud->ids_disponibles, true) ?? [];
+                $estaEnIds = in_array($authUser->id, $idsDisponibles) ||
+                    in_array((string)$authUser->id, array_map('strval', $idsDisponibles));
+
+                if (!$estaEnIds) {
+                    return false;
+                }
+
+                // Verificar si ya fue notificado
+                $recicladoresNotificados = json_decode($solicitud->recicladores_notificados, true) ?? [];
+                $yaNotificado = in_array($authUser->id, $recicladoresNotificados) ||
+                    in_array((string)$authUser->id, array_map('strval', $recicladoresNotificados));
+
+                return !$yaNotificado;
+            });
+
+            Log::info('Solicitudes filtradas para notificar', [
+                'count' => $solicitudesParaNotificar->count(),
+                'ids' => $solicitudesParaNotificar->pluck('id')->toArray()
+            ]);
+
+            // MARCAR SOLICITUDES COMO NOTIFICADAS
+            foreach ($solicitudesParaNotificar as $solicitud) {
+                $recicladoresNotificados = json_decode($solicitud->recicladores_notificados, true) ?? [];
+
+                if (!in_array($authUser->id, $recicladoresNotificados)) {
+                    $recicladoresNotificados[] = $authUser->id;
+                    $solicitud->recicladores_notificados = json_encode($recicladoresNotificados);
+                    $solicitud->save();
+                }
+            }
+
+            // CARGAR RELACIONES PARA SOLICITUDES NUEVAS
+            $solicitudesParaNotificar->load(['authUser', 'authUser.ciudadano', 'materiales']);
+
+            // ⬇️ SOLO LAS SOLICITUDES PARA NOTIFICAR (sin asignadas directamente) ⬇️
+            $asignacionesOrdenadas = $solicitudesParaNotificar
+                ->sortByDesc('created_at')
+                ->values();
+
+            // ACTUALIZAR ÚLTIMA SINCRONIZACIÓN
+            $reciclador->ultima_sincronizacion = now();
+            $reciclador->save();
+
+            Log::info('====== RESULTADO SINCRONIZACIÓN ======', [
+                'total_asignaciones' => $asignacionesOrdenadas->count(),
+                'nuevas_para_notificar' => $solicitudesParaNotificar->count(),
+                'nueva_sincronizacion' => now()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Sincronización completada con éxito',
+                'data' => $asignacionesOrdenadas,
+                'sync_info' => [
+                    'timestamp' => now(),
+                    'nuevas_solicitudes' => $solicitudesParaNotificar->count(),
+                    'asignaciones_directas' => 0, // Ya no incluimos asignaciones directas
+                    'es_primera_sincronizacion' => !$ultimaSincronizacion
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en sincronización de asignaciones: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error en sincronización: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Marcar solicitud como vista por el reciclador
+     * Se llama cuando el reciclador ve la solicitud pero no la acepta aún
+     */
+    public function marcarSolicitudVista(Request $request, $solicitudId)
+    {
+        try {
+            $authUser = Auth::user();
+
+            $solicitud = SolicitudRecoleccion::find($solicitudId);
+
+            if (!$solicitud) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Solicitud no encontrada'
+                ], 404);
+            }
+
+            // Marcar como notificado si no lo está
+            $recicladoresNotificados = json_decode($solicitud->recicladores_notificados, true) ?? [];
+
+            if (!in_array($authUser->id, $recicladoresNotificados)) {
+                $recicladoresNotificados[] = $authUser->id;
+                $solicitud->recicladores_notificados = json_encode($recicladoresNotificados);
+                $solicitud->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Solicitud marcada como vista'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener información de sincronización del reciclador
+     */
+    public function obtenerInfoSincronizacion(Request $request)
+    {
+        try {
+            $authUser = Auth::user();
+
+            if ($authUser->role !== 'reciclador') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Solo los recicladores pueden acceder a esta información',
+                ], 403);
+            }
+
+            $reciclador = Reciclador::find($authUser->profile_id);
+
+            // Contar solicitudes pendientes para este reciclador
+            $solicitudesPendientes = SolicitudRecoleccion::where('estado', 'buscando_reciclador')
+                ->whereRaw('JSON_CONTAINS(ids_disponibles, ?)', ['"' . $authUser->id . '"'])
+                ->whereRaw('NOT JSON_CONTAINS(IFNULL(recicladores_notificados, "[]"), ?)', ['"' . $authUser->id . '"'])
+                ->count();
+
+            // Contar asignaciones directas
+            $asignacionesDirectas = SolicitudRecoleccion::where('reciclador_id', $authUser->id)
+                ->whereIn('estado', ['asignado', 'en_camino'])
+                ->count();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'reciclador_id' => $authUser->id,
+                    'ultima_sincronizacion' => $reciclador->ultima_sincronizacion,
+                    'solicitudes_pendientes_no_notificadas' => $solicitudesPendientes,
+                    'asignaciones_directas' => $asignacionesDirectas,
+                    'total_disponibles' => $solicitudesPendientes + $asignacionesDirectas,
+                    'necesita_sincronizacion' => $reciclador->necesitaSincronizacion(30), // 30 minutos
+                    'solicitudes_notificadas' => $reciclador->solicitudes_notificadas ?? []
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al obtener info de sincronización: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener información de sincronización',
             ], 500);
         }
     }

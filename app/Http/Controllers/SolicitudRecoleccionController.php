@@ -559,7 +559,10 @@ class SolicitudRecoleccionController extends Controller
     {
         $solicitud = SolicitudRecoleccion::where('id', $id)
             ->where('user_id', Auth::id())
-            ->with(['materiales', 'reciclador'])
+            ->with([
+                'materiales',
+                'recicladorAsignado.reciclador:id,name,telefono,logo_url'
+            ])
             ->first();
 
         if (!$solicitud) {
@@ -569,9 +572,18 @@ class SolicitudRecoleccionController extends Controller
             ], 404);
         }
 
+        // Reestructurar para extraer solo los datos del reciclador
+        $data = $solicitud->toArray();
+
+        if (isset($data['reciclador_asignado']['reciclador'])) {
+            $data['reciclador'] = $data['reciclador_asignado']['reciclador'];
+        }
+
+        unset($data['reciclador_asignado']);
+
         return response()->json([
             'success' => true,
-            'data' => $solicitud
+            'data' => $data
         ]);
     }
 

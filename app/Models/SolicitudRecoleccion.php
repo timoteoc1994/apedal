@@ -63,4 +63,12 @@ class SolicitudRecoleccion extends Model
     {
         return $this->belongsTo(Reciclador::class, 'reciclador_id');
     }
+
+    // En SolicitudRecoleccion.php
+    public function recicladorAsignado()
+    {
+        return $this->belongsTo(AuthUser::class, 'reciclador_id')
+            ->where('role', 'reciclador')
+            ->with('reciclador:id,name,telefono,logo_url');
+    }
 }

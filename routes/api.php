@@ -32,77 +32,6 @@ Route::get('/ciudades_disponibles', [AuthController::class, 'getCities']);
 
 
 
-Route::post('/direct-notification', function (Request $request) {
-    try {
-        $validated = $request->validate([
-            'token' => 'required|string',
-            'title' => 'required|string',
-            'body' => 'required|string',
-            'data' => 'nullable|array',
-        ]);
-
-        $factory = (new \Kreait\Firebase\Factory)
-            ->withServiceAccount(storage_path('app/appedal-ffe02-firebase-adminsdk-fbsvc-98fe6577e7.json'));
-
-        $messaging = $factory->createMessaging();
-
-        $notification = \Kreait\Firebase\Messaging\Notification::create(
-            $validated['title'],
-            $validated['body']
-        );
-
-        $message = \Kreait\Firebase\Messaging\CloudMessage::withTarget('token', $validated['token'])
-            ->withNotification($notification)
-            ->withData($validated['data'] ?? []);
-
-        $result = $messaging->send($message);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Notificación enviada',
-            'result' => $result
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Error: ' . $e->getMessage(),
-        ]);
-    }
-});
-
-// En routes/api.php
-Route::get('/test-notification/{token}', function ($token) {
-    try {
-        $factory = (new \Kreait\Firebase\Factory)
-            ->withServiceAccount(storage_path('app/appedal-ffe02-firebase-adminsdk-fbsvc-98fe6577e7.json'));
-
-        $messaging = $factory->createMessaging();
-
-        $notification = \Kreait\Firebase\Messaging\Notification::create(
-            'Prueba desde endpoint directo',
-            'Este es un mensaje de prueba directo'
-        );
-
-        $message = \Kreait\Firebase\Messaging\CloudMessage::withTarget('token', $token)
-            ->withNotification($notification)
-            ->withData(['tipo' => 'prueba_endpoint', 'timestamp' => time()]);
-
-        $result = $messaging->send($message);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Notificación enviada',
-            'result' => $result
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Error: ' . $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-    }
-});
-
 Route::middleware('auth:sanctum')->post('/update-fcm-token', function (Request $request) {
     $request->validate([
         'fcm_token' => 'required|string',
@@ -183,6 +112,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Ruta para que el reciclador actualice su ubicación
         Route::post('/reciclador/update-location', [UbicacionreciladoresController::class, 'updateLocation']);
+
+        // ⬇️ AGREGAR ESTAS 3 LÍNEAS NUEVAS ⬇️
+        Route::get('/sincronizar-asignaciones', [RecicladorController::class, 'sincronizarAsignaciones']);
+        Route::post('/solicitudes/{id}/marcar-vista', [RecicladorController::class, 'marcarSolicitudVista']);
+        Route::get('/info-sincronizacion', [RecicladorController::class, 'obtenerInfoSincronizacion']);
+        // ⬆️ FIN DE LÍNEAS NUEVAS ⬆️
     });
 
 
