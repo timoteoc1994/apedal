@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActualizarPerfilController;
+use App\Http\Controllers\ImpactoAmbientalController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -28,8 +29,10 @@ Route::get('/mensajes', function () {
 
 // Rutas públicas
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register/reciclador', [AuthController::class, 'solo_reciclador_register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/ciudades_disponibles', [AuthController::class, 'getCities']);
+Route::get('/asociaciones_disponibles', [AuthController::class, 'getAsociaiones']);
 
 
 
@@ -70,7 +73,6 @@ Route::middleware('auth:sanctum')->group(function () {
         // Cancelar una solicitud
         Route::delete('/ciudadanos/solicitudes/cancelar/{id}', [SolicitudRecoleccionController::class, 'destroy']);
 
-
         // Ruta para solicitudes inmediatas
         Route::post('ciudadanos/solicitudes/inmediata', [SolicitudInmediataController::class, 'buscarRecicladores']);
         // Ruta para que el ciudadano verifique el estado de su solicitud inmediata
@@ -83,6 +85,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/calificar-recolector', [CalificarReciclador::class, 'calificarReciclador']);
         //Obtener asociaciones para el mapa
         Route::get('/asociaciones', [MapaAsocicacion::class, 'getAsociaciones']);
+        //obtener impacto ambiental del ciudadano
+        Route::get('/impacto-ambiental', [ImpactoAmbientalController::class, 'obtenerEstadisticasPorMes']);
     });
 
 
@@ -107,6 +111,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         //ruta para ver los pendientes del reciclador 
         Route::get('/reciclador/solicitudes/pendientes', [RecicladorController::class, 'Pendientes']);
+        //ruta para contar las solicitudes pendientes de un reciclador
+        Route::get('reciclador/solicitudes/pendientes/contador', [RecicladorController::class, 'obtenerContadorPendientes']);
         //verhistorial de las solicitudes de un reciclador
         Route::get('/reciclador/solicitudes/historial', [RecicladorController::class, 'Historial']);
 
@@ -115,12 +121,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Ruta para que el reciclador actualice su ubicación
         Route::post('/reciclador/update-location', [UbicacionreciladoresController::class, 'updateLocation']);
+        //consultar ubicacion actual
+        Route::get('/consultar/ubicacion/reciclador', [UbicacionreciladoresController::class, 'ubiacacionActual']);
 
         // ⬇️ AGREGAR ESTAS 3 LÍNEAS NUEVAS ⬇️
         Route::get('/sincronizar-asignaciones', [RecicladorController::class, 'sincronizarAsignaciones']);
         Route::post('/solicitudes/{id}/marcar-vista', [RecicladorController::class, 'marcarSolicitudVista']);
         Route::get('/info-sincronizacion', [RecicladorController::class, 'obtenerInfoSincronizacion']);
         // ⬆️ FIN DE LÍNEAS NUEVAS ⬆️
+
+
     });
 
 

@@ -91,6 +91,30 @@ class RecicladorController extends Controller
             'data' => $solicitudes
         ]);
     }
+
+    public function obtenerContadorPendientes(Request $request)
+    {
+        try {
+            $recicladorId = Auth::id();
+
+            // Query optimizada que solo cuenta, no trae todos los datos
+            $contador = SolicitudRecoleccion::where('reciclador_id', $recicladorId)
+                ->whereIn('estado', ['pendiente', 'asignado', 'en_camino']) // Estados que consideras "pendientes"
+                ->count();
+
+            return response()->json([
+                'success' => true,
+                'contador' => $contador,
+                'message' => 'Contador de pendientes obtenido correctamente'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener contador de pendientes: ' . $e->getMessage(),
+                'contador' => 0
+            ], 500);
+        }
+    }
     public function Historial(Request $request)
     {
         // Inicializa la consulta base con el usuario autenticado
@@ -634,10 +658,7 @@ class RecicladorController extends Controller
      */
     public function actualizarRevisionMateriales(Request $request, $id)
     {
-        //imprimir lo que llega
-        Log::info('Datos recibidos: ' . json_encode($request->all()));
-        //imprimir id
-        Log::info('ID de la solicitud: ' . $id);
+
         try {
             $user = Auth::user();
             $validator = Validator::make($request->all(), [
@@ -706,6 +727,7 @@ class RecicladorController extends Controller
                     // Verificar que el material pertenezca a la solicitud
                     if ($material && $material->solicitud_id == $id) {
                         $material->peso_revisado = $materialData['peso'];
+                        $material->reciclador_id = $user->id;
                         $material->save();
                     }
                 }

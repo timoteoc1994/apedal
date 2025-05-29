@@ -88,6 +88,7 @@ class SolicitudInmediataController extends Controller
                     'solicitud_id' => $solicitud->id,
                     'tipo' => $material['tipo'],
                     'peso' => $material['peso'],
+                    'user_id' => Auth::id(),
                 ]);
             }
 

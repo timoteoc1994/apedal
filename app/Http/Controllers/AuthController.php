@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\QueryException;
 
+
 class AuthController extends Controller
 {
 
@@ -116,6 +117,97 @@ class AuthController extends Controller
         }
     }
 
+    public function solo_reciclador_register(Request $request)
+    {
+        try {
+            // Validar datos comunes
+            $common = $request->validate([
+                'email' => 'required|email|unique:auth_users,email',
+                'password' => 'required|min:8|confirmed',
+                'role' => 'required|in:ciudadano,reciclador,asociacion',
+                'fcm_token' => 'nullable|string', // Añadir validación para token FCM
+            ]);
+
+            // Validar datos específicos según el rol
+            $profileData = [];
+            $profile = null;;
+
+
+            if ($common['role'] === 'reciclador') {
+                $profileData = $request->validate([
+                    'name' => 'required|string',
+                    'telefono' => 'required|string',
+                    'asociacion_id' => 'required|exists:asociaciones,id',
+                ]);
+                //anadir variables a $profileData
+                //buscar ciudad de la asociacion
+                $asociacion = Asociacion::find($request->asociacion_id);
+                $id_de_auth = AuthUser::where('profile_id', $asociacion->id)->where('role', 'asociacion')->first();
+
+                $profileData['asociacion_id'] =  $id_de_auth->id;
+                $profileData['ciudad'] = $asociacion->city;
+                $profileData['estado'] = 'Inactivo';
+                $profileData['status'] = 'inactivo';
+
+
+                $profile = Reciclador::create($profileData);
+            }
+
+            // Crear usuario de autenticación con el token FCM
+            $userData = [
+                'email' => $common['email'],
+                'password' => Hash::make($common['password']),
+                'role' => $common['role'],
+                'profile_id' => $profile->id,
+            ];
+
+            // Añadir el token FCM si está presente
+            if ($request->has('fcm_token') && $request->fcm_token) {
+                $userData['fcm_token'] = $request->fcm_token;
+            }
+
+            $user = AuthUser::create($userData);
+
+            // Generar token si se usa Sanctum
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Registro exitoso',
+                'data' => [
+                    'user' => $user,
+                    'profile' => $profile,
+                    'token' => $token
+                ]
+            ], 201);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errores de validación',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (QueryException $e) {
+            // Manejo de errores de base de datos
+            if ($e->getCode() == 23505 || $e->getCode() == 1062) { // Códigos para clave duplicada en PostgreSQL y MySQL
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El correo electrónico ya está registrado'
+                ], 400);
+            }
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de base de datos',
+                'error' => $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ocurrió un error inesperado',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     /**
      * Login de usuarios
      */
@@ -149,6 +241,13 @@ class AuthController extends Controller
                 $profileData = Ciudadano::find($user->profile_id);
             } elseif ($user->role === 'reciclador') {
                 $profileData = Reciclador::with('asociacion:id,name')->find($user->profile_id);
+                // Verificar si la cuenta está habilitada
+                if (!$profileData || $profileData->estado != 'Activo') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La cuenta del reciclador aún no ha sido habilitada'
+                    ], 403);
+                }
             } elseif ($user->role === 'asociacion') {
                 $profileData = Asociacion::find($user->profile_id);
                 // Verificar si la cuenta está habilitada
@@ -311,6 +410,28 @@ class AuthController extends Controller
         }
     }
 
+    /**
+     * Obtener asociaciones disponibles
+     */
+    public function getAsociaiones()
+    {
+        try {
+            $asociaciones = Asociacion::where('verified', 1)->get(['id', 'name']);
+
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ciudades obtenidas correctamente',
+                'data' => $asociaciones
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener ciudades',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
     /**
      * Obtener perfil del usuario autenticado
      */

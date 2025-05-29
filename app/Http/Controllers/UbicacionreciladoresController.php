@@ -10,7 +10,7 @@ use App\Events\LocationUpdate;
 use Illuminate\Support\Facades\Log;
 use App\Models\Reciclador;
 use Carbon\Carbon;
-
+use Illuminate\Validation\ValidationException;
 
 
 
@@ -149,5 +149,66 @@ class UbicacionreciladoresController extends Controller
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
 
         return $earthRadius * $c;
+    }
+
+    //buscarubiacaion actual del reciclador en redis
+    public function ubiacacionActual(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            // Primero intentar obtener de Redis (más rápido)
+            $redisLocation = Redis::get("recycler:location:{$user->id}");
+
+            if ($redisLocation) {
+                $locationData = json_decode($redisLocation, true);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Ubicación obtenida de caché',
+                    'data' => [
+                        'latitude' => (float) $locationData['latitude'],
+                        'longitude' => (float) $locationData['longitude'],
+                        'timestamp' => $locationData['timestamp'],
+                        'status' => $locationData['status'],
+                        'source' => 'redis'
+                    ]
+                ]);
+            }
+
+            // Si no está en Redis, obtener de la base de datos
+            $location = Ubicacionreciladores::where('auth_user_id', $user->id)
+                ->orderBy('updated_at', 'desc')
+                ->first();
+
+            if ($location) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Ubicación obtenida de base de datos',
+                    'data' => [
+                        'latitude' => (float) $location->latitude,
+                        'longitude' => (float) $location->longitude,
+                        'timestamp' => $location->timestamp->toIso8601String(),
+                        'status' => 'disponible', // Por defecto
+                        'source' => 'database'
+                    ]
+                ]);
+            }
+
+            // Si no hay ubicación guardada
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró ubicación para el reciclador',
+                'data' => null
+            ], 404);
+        } catch (Exception $e) {
+            Log::error('Error al obtener ubicación del reciclador: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno del servidor',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

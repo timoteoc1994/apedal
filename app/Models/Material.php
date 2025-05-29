@@ -13,7 +13,9 @@ class Material extends Model
         'solicitud_id',
         'tipo',
         'peso',
-        'peso_revisado'
+        'peso_revisado',
+        'user_id',
+        'reciclador_id',
     ];
 
     protected $casts = [

@@ -45,6 +45,8 @@ return new class extends Migration
             $table->string('tipo');
             $table->decimal('peso', 8, 2);
             $table->decimal('peso_revisado', 8, 2)->nullable();
+            $table->foreignId('reciclador_id')->nullable()->constrained('auth_users');
+            $table->foreignId('user_id')->constrained('auth_users');
             $table->timestamps();
         });
     }

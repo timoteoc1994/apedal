@@ -493,6 +493,7 @@ class SolicitudRecoleccionController extends Controller
             $solicitud->materiales()->create([
                 'tipo' => $material['tipo'],
                 'peso' => $material['peso'],
+                'user_id' => Auth::id(),
             ]);
         }
 
@@ -614,18 +615,57 @@ class SolicitudRecoleccionController extends Controller
         // Actualizar estado a 'cancelado'
         $solicitud->update(['estado' => 'cancelado']);
 
-        //disparar evento de eliminar de la lista
-        //disparar el evento NuevaSolicitudInmediata para todos los ids_disponibles que es json
+        // Disparar el evento NuevaSolicitudInmediata para todos los ids_disponibles
         $ids_disponibles = json_decode($solicitud->ids_disponibles);
-        foreach ($ids_disponibles as $id_disponible) {
-            log::info('Disparando el evento para eliminar la solicitud de los otros usuarios');
-            EliminacionSolicitud::dispatch($solicitud, $id_disponible);
+        if ($ids_disponibles && is_array($ids_disponibles)) {
+            foreach ($ids_disponibles as $id_disponible) {
+                Log::info('Disparando el evento para eliminar la solicitud de los otros usuarios');
+                EliminacionSolicitud::dispatch($solicitud, $id_disponible);
+            }
         }
 
+        // Eliminar todas las imágenes que tiene esta solicitud
+        $imagenes = json_decode($solicitud->imagen);
+        if ($imagenes && is_array($imagenes)) {
+            foreach ($imagenes as $imagen) {
+                // Las imágenes están en public/storage/ físicamente
+                // Tu JSON tiene: "solicitudes/archivo.jpg"
+                // Necesitas: public/storage/solicitudes/archivo.jpg
+
+                $rutaCompleta = public_path('storage/' . $imagen);
+
+                Log::info("Intentando eliminar archivo: {$rutaCompleta}");
+
+                if (file_exists($rutaCompleta)) {
+                    unlink($rutaCompleta);
+                    Log::info("✅ Imagen eliminada correctamente: {$rutaCompleta}");
+                } else {
+                    Log::error("❌ Imagen no encontrada: {$rutaCompleta}");
+
+                    // Debug: verificar contenido del directorio
+                    $directorioSolicitudes = public_path('storage/solicitudes/');
+                    if (is_dir($directorioSolicitudes)) {
+                        $archivos = scandir($directorioSolicitudes);
+                        Log::info("Archivos en el directorio: " . json_encode(array_diff($archivos, ['.', '..'])));
+                    }
+                }
+            }
+
+            // Limpiar el campo imagen en la base de datos
+            $solicitud->update(['imagen' => null]);
+            Log::info("Campo imagen limpiado en la solicitud ID: {$solicitud->id}");
+        }
+
+        // Eliminar todos los materiales asociados a esta solicitud
+        $materialesEliminados = Material::where('solicitud_id', $solicitud->id)->delete();
+        Log::info("Materiales eliminados: {$materialesEliminados} registros de la solicitud ID: {$solicitud->id}");
+
+        // NO eliminar la solicitud - solo mantenerla sin imágenes ni materiales
+        // $solicitud->delete(); // ← Esta línea comentada
 
         return response()->json([
             'success' => true,
-            'message' => 'Solicitud cancelada correctamente'
+            'message' => 'Imágenes y materiales eliminados correctamente'
         ]);
     }
 
