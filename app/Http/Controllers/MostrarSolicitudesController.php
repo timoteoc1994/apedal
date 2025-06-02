@@ -18,6 +18,33 @@ use Kreait\Firebase\Messaging\CloudMessage;
 
 class MostrarSolicitudesController extends Controller
 {
+    public function getEstadisticas()
+    {
+        // Obtener la asociación autenticada
+        $asociacion = Auth::user();
+
+        // Verificar que el usuario es una asociación
+        if (!$asociacion || $asociacion->role !== 'asociacion') {
+            return response()->json([
+                'message' => 'No autorizado',
+            ], 403);
+        }
+
+        // Contar recicladores asociados a esta asociación
+        $recicladoresCount = Reciclador::where('asociacion_id', $asociacion->id)->count();
+
+        // Contar solicitudes pendientes para esta asociación
+        $solicitudesCount = SolicitudRecoleccion::where('asociacion_id', $asociacion->id)
+            ->where('estado', 'buscando_reciclador')
+            ->count();
+
+        // Devolver respuesta en formato JSON
+        return response()->json([
+            'recicladores_count' => $recicladoresCount,
+            'solicitudes_count' => $solicitudesCount,
+            'success' => true,
+        ], 200);
+    }
     // Modificación para la función enviarNotificacion
     private function enviarNotificacion2($token, $title, $body, $data = [])
     {
@@ -63,7 +90,7 @@ class MostrarSolicitudesController extends Controller
     public function index()
     {
         $solicitudes = SolicitudRecoleccion::where('asociacion_id', Auth::id())
-            ->where('estado', 'pendiente')
+            ->where('estado', 'buscando_reciclador')
             ->select('id', 'user_id', 'asociacion_id', 'hora_inicio', 'hora_fin', 'peso_total', 'estado', 'created_at')
             ->latest()
             ->get();
@@ -209,6 +236,7 @@ class MostrarSolicitudesController extends Controller
                 'phone' => $user->reciclador->telefono,
                 'email' => $user->email,
                 'address' => $user->reciclador->ciudad, // O usar otro campo como dirección
+                'logo_url' => $user->reciclador->logo_url,
                 'total_recolecciones' => 0, // Debes obtener esto de otra tabla o calcularlo
                 'total_kg' => 23, // Debes obtener esto de otra tabla o calcularlo
                 'rating' => 0, // Debes obtener esto de otra tabla o calcularlo

@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Reciclador;
 use App\Models\Ubicacionreciladores;
 use Illuminate\Support\Facades\Redis;
+use App\Services\FirebaseService;
 
 class SolicitudRecoleccionController extends Controller
 {
@@ -506,45 +507,17 @@ class SolicitudRecoleccionController extends Controller
             SolicitudAgendada::dispatch($solicitud, $recicladorId, 'agendada');
         }
 
+        //enviar una notificacion a la asociacion que se creo una solicitud en su zona por firebase
 
 
-        /* // Enviar notificación por firebase al usuario que creó la solicitud
-        $user = AuthUser::find(Auth::id());
-        if ($user && $user->fcm_token) {
-            $this->enviarNotificacion(
-                $user->fcm_token,
-                'Solicitud creada con éxito',
-                'Tu solicitud de recolección ha sido registrada y está pendiente de asignación.',
-                [
-                    'solicitud_id' => $solicitud->id,
-                    'tipo' => 'solicitud_creada',
-                    'fecha' => $solicitud->fecha
-                ]
-            );
-        } */
-
-        // Enviar notificación a la asociacion quien debe retirar
-        // Enviar notificación a la asociación que debe atender la solicitud
-        /* if ($asociacion_id) {
-            // Buscar el usuario de esta asociación que tenga token FCM
-            $usuarioAsociacion = AuthUser::find($asociacion_id);
-
-            if ($usuarioAsociacion && $usuarioAsociacion->fcm_token) {
-                $this->enviarNotificacion2(
-                    $usuarioAsociacion->fcm_token,
-                    'Nueva solicitud de recolección',
-                    'Se ha registrado una nueva solicitud en tu zona.',
-                    [
-                        'solicitud_id' => (string)$solicitud->id,
-                        'tipo' => 'nueva_solicitud',
-                        'asociacion_id' => (string)$asociacion_id,
-                        'zona_id' => $zonaEncontrada ? (string)$zonaEncontrada->id : '',
-                        'direccion' => $solicitud->direccion,
-                        'peso_total' => (string)$solicitud->peso_total
-                    ]
-                );
-            }
-        } */
+        FirebaseService::sendNotification($asociacion_id, [
+            'title' => 'Hay una nueva solicitud en tu zona',
+            'body' => 'Un ciudadano ha creado una solicitud en tu zona',
+            'data' => [
+                'route' => '/detalle_solicitud_asociacion',
+                'solicitud_id' => (string)$solicitud->id,
+            ]
+        ]);
 
         return response()->json([
             'success' => true,

@@ -14,7 +14,6 @@ class MapaAsocicacion extends Controller
     public function getAsociaciones(Request $request): JsonResponse
     {
         try {
-            // Obtener el usuario autenticado
             $authUser = Auth::user();
 
             if (!$authUser) {
@@ -24,7 +23,6 @@ class MapaAsocicacion extends Controller
                 ], 401);
             }
 
-            // Verificar que el usuario tenga rol de ciudadano
             if ($authUser->role !== 'ciudadano') {
                 return response()->json([
                     'success' => false,
@@ -32,7 +30,6 @@ class MapaAsocicacion extends Controller
                 ], 403);
             }
 
-            // Obtener los datos del ciudadano
             $ciudadano = Ciudadano::where('id', $authUser->profile_id)->first();
 
             if (!$ciudadano) {
@@ -42,23 +39,21 @@ class MapaAsocicacion extends Controller
                 ], 404);
             }
 
-            // Obtener las asociaciones de la misma ciudad que el ciudadano
             $asociaciones = Asociacion::where('city', $ciudadano->ciudad)
-                ->where('verified', true) // Solo asociaciones verificadas
+                ->where('verified', true)
                 ->select([
                     'id',
-                    'name as nombre',
-                    'number_phone as telefono',
+                    'name',
+                    'number_phone',
                     'direccion',
-                    'city as ciudad',
+                    'city',
                     'descripcion',
-                    'logo_url as imagen',
+                    'logo_url',
                     'color',
-                    'verified as activo'
+                    'verified'
                 ])
                 ->get();
 
-            // Verificar si hay asociaciones en la ciudad
             if ($asociaciones->isEmpty()) {
                 return response()->json([
                     'success' => true,
@@ -67,26 +62,22 @@ class MapaAsocicacion extends Controller
                 ], 200);
             }
 
-            // Procesar las asociaciones y extraer coordenadas
             $asociacionesConInfo = $asociaciones->map(function ($asociacion) {
-                // Extraer coordenadas del campo direccion
                 $coordenadas = $this->extraerCoordenadas($asociacion->direccion);
 
                 return [
                     'id' => $asociacion->id,
-                    'nombre' => $asociacion->nombre,
+                    'nombre' => $asociacion->name,
                     'descripcion' => $asociacion->descripcion ?? 'Asociación de reciclaje comprometida con el medio ambiente',
-                    'direccion' => $this->limpiarDireccion($asociacion->direccion), // Dirección sin coordenadas
-                    'ciudad' => $asociacion->ciudad,
-                    'telefone' => $asociacion->telefono,
-                    'email' => null, // No tienes este campo en tu modelo
-                    'imagen' => $asociacion->imagen,
+                    'direccion' => $asociacion->descripcion,
+                    'ciudad' => $asociacion->city,
+                    'telefono' => $asociacion->number_phone,
+                    'email' => optional($asociacion->authUser)->email,
+                    'imagen' => $asociacion->logo_url,
                     'color' => $asociacion->color ?? '#00AC5F',
-                    'activo' => $asociacion->activo,
+                    'activo' => $asociacion->verified,
                     'latitud' => $coordenadas['latitud'],
                     'longitud' => $coordenadas['longitud'],
-                    'horario_atencion' => 'Lunes a Viernes: 8:00 AM - 5:00 PM',
-                    'tipos_materiales_aceptados' => 'Papel, Cartón, Plástico, Vidrio, Metal',
                 ];
             });
 
@@ -105,6 +96,7 @@ class MapaAsocicacion extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Extraer coordenadas del formato "Lat: -1.241340, Long: -78.629620"

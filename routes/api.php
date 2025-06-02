@@ -17,15 +17,13 @@ use App\Http\Controllers\SolicitudInmediataController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\CalificarReciclador;
 use App\Http\Controllers\MapaAsocicacion;
+use App\Http\Controllers\ChatController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-
-Route::get('/mensajes', function () {
-    return \App\Models\Mensaje::with('user')->latest()->take(50)->get();
-});
 
 // Rutas públicas
 Route::post('/register', [AuthController::class, 'register']);
@@ -51,6 +49,8 @@ Route::middleware('auth:sanctum')->post('/update-fcm-token', function (Request $
     ]);
 });
 
+
+
 // Rutas protegidas (requieren autenticación)
 Route::middleware('auth:sanctum')->group(function () {
     // Rutas para todos los usuarios
@@ -59,11 +59,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/change-password', [ActualizarPerfilController::class, 'changePassword']);
     Route::post('/profile/update', [ActualizarPerfilController::class, 'update']);
     Route::post('/profile/update-with-image', [ActualizarPerfilController::class, 'updateWithImage']);
+
     // Rutas para ciudadanos
     Route::middleware(['role:ciudadano'])->prefix('ciudadano')->group(function () {
-
-
-
         //ruta guardar solicitudes agendadas
         Route::post('/ciudadanos/solicitudes', [SolicitudRecoleccionController::class, 'store']);
         //ruta obtener solicutudes por fecha
@@ -144,11 +142,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/asociacion/registrar/reciclador', [MostrarSolicitudesController::class, 'crearReciclador']);
         //obtener perfil de un reciclador
         Route::get('/asociacion/reciclador/{id}', [MostrarSolicitudesController::class, 'getReciclador']);
-
+        //asignar un reciclador a una solcitud
         Route::post('/solicitudes/asignar-reciclador', [MostrarSolicitudesController::class, 'asignarReciclador']);
 
         // Obtener recicladores disponibles para asignar
         Route::get('/recicladores/disponibles', [MostrarSolicitudesController::class, 'obtenerRecicladoresDisponibles']);
+
+        //Obtener cuantos solcitiudes y recicladores tiene mi asociacion
+        Route::get('/estadisticas/sr', [MostrarSolicitudesController::class, 'getEstadisticas']);
 
         Route::get('/recicladores', [AsociacionController::class, 'getRecicladores']);
         Route::post('/recicladores', [AuthController::class, 'registerRecycler']);

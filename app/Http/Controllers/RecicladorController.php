@@ -462,7 +462,7 @@ class RecicladorController extends Controller
 
                 //enviar notificacion
                 FirebaseService::sendNotification($solicitud->user_id, [
-                    'title' => $nombreReciclador->name . 'acepto tu solcitud agendada',
+                    'title' => $nombreReciclador->name . ' acepto tu solcitud agendada',
                     'body' => 'Puedes ver los detalles ahora',
                     'data' => [
                         'route' => '/detalle_solicitud_ciudadano',
