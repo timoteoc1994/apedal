@@ -18,6 +18,7 @@ use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\CalificarReciclador;
 use App\Http\Controllers\MapaAsocicacion;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\MensajeController;
 
 
 Route::get('/user', function (Request $request) {
@@ -49,10 +50,28 @@ Route::middleware('auth:sanctum')->post('/update-fcm-token', function (Request $
     ]);
 });
 
+//rutas control de versiones
+Route::get('/version', function () {
+    return response()->json([
+        'android' => [
+            'min' => '1.0.5',
+            'latest' => '1.0.8',
+            'url' => 'https://play.google.com/store/apps/details?id=tu.paquete'
+        ],
+        'ios' => [
+            'min' => '1.0.5',
+            'latest' => '1.0.8',
+            'url' => 'https://apps.apple.com/app/idXXXXXXXXX'
+        ]
+    ]);
+});
+
 
 
 // Rutas protegidas (requieren autenticación)
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/mensajes/store', [MensajeController::class, 'store']);
+    Route::get('/mensajes', [MensajeController::class, 'index']);
     // Rutas para todos los usuarios
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'getProfile']);

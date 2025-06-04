@@ -9,11 +9,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Mensaje extends Model
 {
     use HasFactory;
+    protected $table = 'mensajes';
 
-    protected $fillable = ['mensaje', 'user_id'];
+    protected $fillable = ['mensaje', 'user_id', 'solicitud_id'];
 
-    public function user(): BelongsTo
+    public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(AuthUser::class, 'user_id');
+    }
+    public function solicitud()
+    {
+        return $this->belongsTo(SolicitudRecoleccion::class, 'solicitud_id');
     }
 }

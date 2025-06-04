@@ -11,11 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('mensajes', function (Blueprint $table) {
+        Schema::create('app_versions', function (Blueprint $table) {
             $table->id();
-            $table->text('mensaje');
-            $table->foreignId('user_id')->constrained('auth_users');
-            $table->foreignId('solicitud_id')->constrained('solicitudes_recoleccion')->onDelete('cascade');
+            $table->enum('platform', ['android', 'ios'])->unique();
+            $table->string('min_version');     // versión mínima requerida
+            $table->string('latest_version');  // última versión disponible
+            $table->string('update_url');      // enlace a la tienda
             $table->timestamps();
         });
     }
@@ -25,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('mensajes');
+        Schema::dropIfExists('app_versions');
     }
 };

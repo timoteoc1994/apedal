@@ -64,7 +64,7 @@ class RecicladorController extends Controller
             ])
             ->with([
                 'authUser:id,email,profile_id',
-                'authUser.ciudadano:id,name,logo_url' // Agrega logo_url aquí
+                'authUser.ciudadano:id,name,logo_url,telefono' // Agrega logo_url aquí
             ])
             ->latest()
             ->get()
@@ -82,6 +82,7 @@ class RecicladorController extends Controller
                         'name' => $solicitud->authUser?->ciudadano?->name,
                         'logo_url' => $solicitud->authUser?->ciudadano?->logo_url,
                         'email' => $solicitud->authUser?->email,
+                        'telefono' => $solicitud->authUser?->ciudadano?->telefono,
                     ]
                 ];
             });
