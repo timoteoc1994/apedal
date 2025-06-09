@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActualizarPerfilController;
+use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\ImpactoAmbientalController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -19,7 +20,7 @@ use App\Http\Controllers\CalificarReciclador;
 use App\Http\Controllers\MapaAsocicacion;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\MensajeController;
-
+use App\Models\AppVersion;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -30,6 +31,10 @@ Route::get('/user', function (Request $request) {
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/register/reciclador', [AuthController::class, 'solo_reciclador_register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/verificar-email', [AuthController::class, 'verificarEmail']);
+Route::post('/reenviar-codigo', [AuthController::class, 'reenviarCodigo']);
+Route::post('/recuperar-contrasena', [AuthController::class, 'enviarCodigoRecuperacion']);
+Route::post('/restablecer-contrasena', [AuthController::class, 'restablecerContrasena']);
 Route::get('/ciudades_disponibles', [AuthController::class, 'getCities']);
 Route::get('/asociaciones_disponibles', [AuthController::class, 'getAsociaiones']);
 
@@ -51,20 +56,7 @@ Route::middleware('auth:sanctum')->post('/update-fcm-token', function (Request $
 });
 
 //rutas control de versiones
-Route::get('/version', function () {
-    return response()->json([
-        'android' => [
-            'min' => '1.0.5',
-            'latest' => '1.0.8',
-            'url' => 'https://play.google.com/store/apps/details?id=tu.paquete'
-        ],
-        'ios' => [
-            'min' => '1.0.5',
-            'latest' => '1.0.8',
-            'url' => 'https://apps.apple.com/app/idXXXXXXXXX'
-        ]
-    ]);
-});
+Route::get('/version', [AppVersionController::class, 'version']);
 
 
 
@@ -169,8 +161,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
         //Obtener cuantos solcitiudes y recicladores tiene mi asociacion
         Route::get('/estadisticas/sr', [MostrarSolicitudesController::class, 'getEstadisticas']);
-
+        //obtener recicladores por asociacion
         Route::get('/recicladores', [AsociacionController::class, 'getRecicladores']);
+        //obtener recicladores por asociacion nuevos
+        Route::get('/recicladores/nuevos', [AsociacionController::class, 'getRecicladoresnuevos']);
+
+        //actualizar el perfil para un reciclador
+        Route::put('/recicladores/actualizar/{id}', [AsociacionController::class, 'updateReciclador']);
+
         Route::post('/recicladores', [AuthController::class, 'registerRecycler']);
         Route::get('/solicitudes', [AsociacionController::class, 'getSolicitudes']);
         Route::post('/asignar', [AsociacionController::class, 'asignarSolicitud']);

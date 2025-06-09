@@ -24,7 +24,8 @@ class AuthUser extends Authenticatable
         'password',
         'role',
         'profile_id',
-        'fcm_token'
+        'fcm_token',
+        'email_verification_code',
     ];
 
     /**

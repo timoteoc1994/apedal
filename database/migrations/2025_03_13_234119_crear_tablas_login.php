@@ -55,6 +55,7 @@ return new class extends Migration
             $table->enum('status', ['disponible', 'en_ruta', 'inactivo'])->default('disponible');
             $table->enum('estado', ['Activo', 'Inactivo'])->default('Activo');
             $table->string('logo_url')->nullable();
+            $table->string('is_new')->default('false');
             $table->timestamps();
 
             $table->foreign('asociacion_id')->references('id')->on('asociaciones');
@@ -69,6 +70,7 @@ return new class extends Migration
             $table->enum('role', ['ciudadano', 'reciclador', 'asociacion']);
             $table->unsignedBigInteger('profile_id');
             $table->timestamp('email_verified_at')->nullable();
+            $table->string('email_verification_code')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

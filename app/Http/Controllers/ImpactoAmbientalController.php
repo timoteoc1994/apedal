@@ -87,31 +87,32 @@ class ImpactoAmbientalController extends Controller
         //Total papel y cartón para reciclaje
         $evitado_tala_arboles = $suma_papel / 58.85;
         $oxigeno_producido = $evitado_tala_arboles * 4;
-        $co2_captado = $evitado_tala_arboles * 12;
-        $evitado_consumo_agua = $suma_papel / 1000 * 270000;
-        $evitado_consumo_kwh = $suma_papel / 1000 * 7000;
-        $evitado_emitir_admosfera = $evitado_consumo_kwh * 0.5;
+        $co2_captado = $evitado_tala_arboles * 21;
+        $evitado_consumo_agua = $suma_papel / 1000 * 70000;
+        $evitado_consumo_kwh = $suma_papel / 1000 * 2750;
+        $evitado_c02_anio = $suma_papel * 2.5;
+        $evitado_emitir_admosfera = $evitado_consumo_kwh * 0.65;
 
         //total plasticos para reciclaje
         $total_plasticos_calculo = $suma_botellasPET + $suma_plasticosSuaves + $suma_plasticosSoplado + $suma_plasticosRigidos;
-        $evitado_consumo_agua_plasticos = $total_plasticos_calculo * 39.26;
-        $evitado_emitir_admosfera_plasticos = $total_plasticos_calculo * 2.5;
-        $evitado_consumo_kwh_plasticos = $total_plasticos_calculo * 5;
+        $evitado_consumo_agua_plasticos = $total_plasticos_calculo * 233.67;
+        $evitado_emitir_admosfera_plasticos = $total_plasticos_calculo * 1.45;
+        $evitado_consumo_kwh_plasticos = $total_plasticos_calculo * 2.5;
         $recuperado_botellas_pet = $total_plasticos_calculo * (1000 / 18);
 
         //total latas de aluminio
         $total_calculo_aluminio = $suma_latas;
         $evitado_explotar_bauxita = $total_calculo_aluminio * 4;
         $recuperado_latas_bebida = $total_calculo_aluminio * (1000 / 15);
-        $evitado_emitir_admosfera_aluminio = $total_calculo_aluminio * 6.99;
-        $evitado_consumo_kwh_aluminio = $total_calculo_aluminio * 16;
+        $evitado_emitir_admosfera_aluminio = $total_calculo_aluminio * 16;
+        $evitado_consumo_kwh_aluminio = $total_calculo_aluminio * 14.9;
 
         //evitado el desecho al relleno sanitario
         $suma_desechos_carros_recolector = ($suma_papel + $total_plasticos_calculo + $total_calculo_aluminio) / 100 / 15;
 
         //resumen eco-equivalencia
         $total_evitado_consumo_agua = $evitado_consumo_agua + $evitado_consumo_agua_plasticos;
-        $total_evitado_emitir_admosfera = $evitado_emitir_admosfera + $evitado_emitir_admosfera_plasticos + $evitado_emitir_admosfera_aluminio;
+        $total_evitado_emitir_admosfera = $evitado_emitir_admosfera + $evitado_emitir_admosfera_plasticos + $evitado_emitir_admosfera_aluminio + $evitado_c02_anio;
         $total_evitado_consumo_kwh = $evitado_consumo_kwh + $evitado_consumo_kwh_plasticos + $evitado_consumo_kwh_aluminio;
 
 
@@ -125,9 +126,10 @@ class ImpactoAmbientalController extends Controller
                 'impactos' => [
                     "Se ha evitado la tala de " . round($evitado_tala_arboles, 2) . " árboles adultos",
                     "Se produce el oxígeno necesario para " . round($oxigeno_producido, 0) . " personas",
-                    "Se captarán " . round($co2_captado, 2) . " Kg de CO2 al año",
+                    "Se captarán " . round($co2_captado, 1) . " Kg de CO2 al año",
                     "Se ha evitado el consumo de  " . round($evitado_consumo_agua, 0) . " litros de agua",
                     "Se ha evitado el consumo de  " . round($evitado_consumo_kwh, 0) . " KWh de energía",
+                    "Se ha evitado la emisión de " . round($evitado_c02_anio, 0) . " Kg de CO2 al año",
                     "Se ha evitado emitir a la atmósfera " . round($evitado_emitir_admosfera, 0) . " Kg de CO2",
 
                 ]

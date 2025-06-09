@@ -565,8 +565,9 @@ class SolicitudRecoleccionController extends Controller
      * Cancelar una solicitud de recolección (solo si está pendiente)
      */
     // Reemplaza el método destroy actual con este:
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        Log::warning('Request: ' . $request->comentario);
         $solicitud = SolicitudRecoleccion::where('id', $id)
             ->where('user_id', Auth::id())
             ->first();
@@ -586,7 +587,13 @@ class SolicitudRecoleccionController extends Controller
         }
 
         // Actualizar estado a 'cancelado'
-        $solicitud->update(['estado' => 'cancelado']);
+        $comentario = $request->input('comentario', 'cancelado por el usuario');
+        Log::info('El comentario es: ' . $comentario);
+        $solicitud->update([
+            'estado' => 'cancelado',
+            'comentarios' => $comentario,
+        ]);
+
 
         // Disparar el evento NuevaSolicitudInmediata para todos los ids_disponibles
         $ids_disponibles = json_decode($solicitud->ids_disponibles);

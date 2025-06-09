@@ -7,16 +7,92 @@ use App\Models\Solicitud;
 use App\Models\Reciclador;
 use App\Models\Asociacion;
 use Illuminate\Support\Facades\DB;
-use Hash;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
 
 class AsociacionController extends Controller
 {
     /**
      * Obtener todos los recicladores de la asociación autenticada
      */
+    public function updateReciclador(Request $request, $id)
+    {
+        Log::warning($request->all());
+        try {
+            $data = $request->validate([
+                'name' => 'sometimes|string|max:255',
+                'phone' => 'sometimes|string|max:20',
+                'estado' => 'required|string',
+                'password' => 'sometimes|string|min:8|confirmed',
+                'password_confirmation' => 'sometimes|string|min:8',
+                'email' => 'sometimes|string|email|max:255',
+            ]);
+
+            $reciclador = Reciclador::find($id);
+            if (!$reciclador) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Reciclador no encontrado'
+                ], 404);
+            }
+            if ($reciclador->asociacion_id !== $request->user()->profile_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permiso para actualizar este reciclador'
+                ]);
+            }
+
+            //actualizar solo datos del perfil
+            if ($request->filled('name')) {
+                $reciclador->name = $data['name'];
+            }
+            if ($request->filled('phone')) {
+                $reciclador->telefono = $data['phone'];
+            }
+            if ($request->filled('estado')) {
+                $reciclador->estado = $data['estado'];
+            }
+            $reciclador->is_new = 'false';
+            $reciclador->update($data);
+
+            //actualizar el email y contrasena si existen
+            $auth_user = AuthUser::where('profile_id', $reciclador->id)->where('role', 'reciclador')->first();
+            Log::warning($auth_user->email);
+            if ($auth_user) {
+                Log::warning($auth_user->email);
+
+                if ($request->filled('email')) {
+                    $auth_user->email = $data['email'];
+                }
+
+                if ($request->filled('password')) {
+                    $auth_user->password = $data['password'];
+                }
+
+                $auth_user->save(); // Guardas una sola vez si algo cambió
+            }
+            return response()->json([
+                'success' => true,
+                'message' => 'Reciclador actualizado correctamente',
+                'data' => $reciclador
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errores de validación',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar reciclador',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
     public function getRecicladores(Request $request)
     {
         try {
@@ -24,14 +100,14 @@ class AsociacionController extends Controller
             $asociacion = Asociacion::find($user->profile_id);
 
             // Parámetros de paginación
-            $perPage = $request->query('per_page', 5);
+            $perPage = $request->query('per_page', 10);
             $page = $request->query('page', 1);
 
             // Parámetro de búsqueda
             $busqueda = $request->query('busqueda', '');
 
             // Query base
-            $query = Reciclador::where('asociacion_id', $asociacion->id);
+            $query = Reciclador::where('asociacion_id', $asociacion->id)->where('is_new', 'false');
 
             // Aplicar filtro de búsqueda si existe
             if (!empty($busqueda)) {
@@ -43,6 +119,58 @@ class AsociacionController extends Controller
                 // Si es búsqueda, limitar a 3 resultados
                 if ($request->query('es_busqueda', false)) {
                     $perPage = 3;
+                }
+            }
+
+            // Obtener resultados paginados
+            $recicladores = $query->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Recicladores obtenidos correctamente',
+                'data' => $recicladores->items(),
+                'pagination' => [
+                    'current_page' => $recicladores->currentPage(),
+                    'last_page' => $recicladores->lastPage(),
+                    'per_page' => $recicladores->perPage(),
+                    'total' => $recicladores->total()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener recicladores',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getRecicladoresnuevos(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $asociacion = Asociacion::find($user->profile_id);
+
+            // Parámetros de paginación
+            $perPage = $request->query('per_page', 10);
+            $page = $request->query('page', 1);
+
+            // Parámetro de búsqueda
+            $busqueda = $request->query('busqueda', '');
+
+            // Query base
+            $query = Reciclador::where('asociacion_id', $asociacion->id)->where('is_new', 'true');
+
+            // Aplicar filtro de búsqueda si existe
+            if (!empty($busqueda)) {
+                $query->where(function ($q) use ($busqueda) {
+                    $q->where('name', 'like', "%{$busqueda}%")
+                        ->orWhere('telefono', 'like', "%{$busqueda}%");
+                });
+
+                // Si es búsqueda, limitar a 3 resultados
+                if ($request->query('es_busqueda', false)) {
+                    $perPage = 5;
                 }
             }
 

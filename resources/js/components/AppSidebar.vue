@@ -29,6 +29,11 @@ const mainNavItems: NavItem[] = [
         href: route('zonas.mapa'),
         icon: Building,
     },
+    {
+        title: 'Version',
+        href: route('versions.index'),
+        icon: Building,
+    },
 
     
 ];

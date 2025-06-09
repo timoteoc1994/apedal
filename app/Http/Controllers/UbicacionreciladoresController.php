@@ -12,8 +12,6 @@ use App\Models\Reciclador;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
 
-
-
 class UbicacionreciladoresController extends Controller
 {
     /**
@@ -23,8 +21,6 @@ class UbicacionreciladoresController extends Controller
     {
         $user = Auth::user();
 
-        //imprimir lo que llega por log
-        Log::info('Solicitud inmediata recibida', $request->all());
 
         // Validar los datos recibidos
         $validated = $request->validate([
@@ -203,7 +199,6 @@ class UbicacionreciladoresController extends Controller
             ], 404);
         } catch (Exception $e) {
             Log::error('Error al obtener ubicación del reciclador: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Error interno del servidor',

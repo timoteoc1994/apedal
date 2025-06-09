@@ -28,8 +28,6 @@ class SolicitudInmediataController extends Controller
      */
     public function buscarRecicladores(Request $request)
     {
-        Log::info('Solicitud inmediata recibida entrando', $request->all());
-
         try {
             // Validar los datos de la solicitud
             $validatedData = $request->validate([
@@ -59,7 +57,7 @@ class SolicitudInmediataController extends Controller
             }
 
 
-            Log::info('imagenes sacado');
+
             // Iniciar transacción
             //DB::beginTransaction();
 
@@ -115,10 +113,7 @@ class SolicitudInmediataController extends Controller
 
             // Crear notificaciones para los recicladores encontrados
             //imprimir un log
-            Log::info('Creando notificaciones para recicladores encontrados', [
-                'recicladores' => $recicladores,
-                'solicitud_id' => $solicitud->id
-            ]);
+
 
             //actualizar el campo ids_disponibles de la solciitud con los ids de los recicladores disponibles esto debe ser un array y enviar un evento para actualizar los websockets
             //pero cada id tiene que poner la id del auth no id del recialdor
@@ -131,10 +126,6 @@ class SolicitudInmediataController extends Controller
             $solicitud->ids_disponibles = json_encode($idsDisponibles);
             $solicitud->save();
 
-            Log::info('IDs de usuarios autenticados (auth_users) disponibles guardados', [
-                'solicitud_id' => $solicitud->id,
-                'ids_disponibles' => $idsDisponibles
-            ]);
 
 
             // Cargar relaciones necesarias para el broadcast
@@ -155,7 +146,7 @@ class SolicitudInmediataController extends Controller
                 // Emitir evento WebSocket pero el id reciclador atrer con el auth_user_id
                 //event(new NuevaSolicitudInmediata($solicitud, $reciclador->auth_user_id));
                 //log de $reciclador->auth_user_id
-                Log::info('enviando al id' . $reciclador->auth_user_id);
+
                 //event(new \App\Events\NuevaSolicitudInmediata($solicitud, $reciclador->auth_user_id));
                 // Dispara el evento de broadcast
                 NuevaSolicitudInmediata::dispatch($solicitud, $reciclador->auth_user_id, 'inmediata');
@@ -163,13 +154,8 @@ class SolicitudInmediataController extends Controller
                 // También enviar notificación push como respaldo
                 // $this->enviarNotificacionReciclador($reciclador, $solicitud);
 
-                Log::info('Notificación y evento emitidos para reciclador', [
-                    'reciclador_id' => $reciclador->id,
-                    'solicitud_id' => $solicitud->id
-                ]);
+
             }
-
-
 
             // Iniciar el proceso de actualización periódica de recicladores disponibles
             ActualizarRecicladoresdisponibles::dispatch($solicitud->id, 0, 16, 3) // 16 intentos para un total de 4 minutos
@@ -189,10 +175,7 @@ class SolicitudInmediataController extends Controller
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error al procesar solicitud inmediata: ' . $e->getMessage(), [
-                'exception' => $e,
-                'request' => $request->all()
-            ]);
+
 
             return response()->json([
                 'success' => false,
@@ -206,12 +189,7 @@ class SolicitudInmediataController extends Controller
      */
     private function encontrarRecicladoresCercanos($latitud, $longitud, $radioKm = 3, $limite = 10)
     {
-        Log::info('Buscando recicladores cercanos con Redis', [
-            'latitud' => $latitud,
-            'longitud' => $longitud,
-            'radio_km' => $radioKm,
-            'limite' => $limite
-        ]);
+
 
         // Convertir radio de km a metros para Redis
         $radioMetros = $radioKm * 1000;
@@ -227,17 +205,14 @@ class SolicitudInmediataController extends Controller
         );
 
         if (empty($recicladorIds)) {
-            Log::info("No se encontraron recicladores en Redis, intentando con un radio mayor");
+
             if ($radioKm < 10) {
                 return $this->encontrarRecicladoresCercanos($latitud, $longitud, 10, $limite);
             }
             return collect([]);
         }
 
-        Log::info("Recicladores encontrados en radio inicial: " . count($recicladorIds));
 
-        // Inspeccionar la estructura real de los resultados para depuración
-        Log::info("Estructura del primer resultado:", ['data' => json_encode($recicladorIds[0])]);
 
         // Procesar resultados de Redis
         $recicladoresFiltrados = collect();
@@ -260,7 +235,7 @@ class SolicitudInmediataController extends Controller
             }
             // Caso 3: Para otra estructura, necesitamos conocer el formato exacto
             else {
-                Log::warning("Formato de respuesta de Redis desconocido", ['item' => $item]);
+
                 continue;
             }
 
@@ -305,11 +280,7 @@ class SolicitudInmediataController extends Controller
 
                         $recicladoresFiltrados->push($reciclador);
 
-                        Log::info("Reciclador aceptado", [
-                            'id' => $reciclador->id,
-                            'nombre' => $reciclador->name,
-                            'distancia_km' => $reciclador->distancia
-                        ]);
+
 
                         // Interrumpir si ya tenemos suficientes
                         if ($recicladoresFiltrados->count() >= $limite) {
@@ -320,11 +291,11 @@ class SolicitudInmediataController extends Controller
             }
         }
 
-        Log::info("Recicladores que cumplen todos los criterios: " . $recicladoresFiltrados->count());
+
 
         // Si no encontramos suficientes, intentar con radio mayor
         if ($recicladoresFiltrados->isEmpty() && $radioKm < 10) {
-            Log::info("Intentando con un radio mayor: 10 km");
+
             return $this->encontrarRecicladoresCercanos($latitud, $longitud, 10, $limite);
         }
 
@@ -334,41 +305,7 @@ class SolicitudInmediataController extends Controller
     /**
      * Envía notificación al reciclador (implementar según tu sistema de notificaciones)
      */
-    private function enviarNotificacionReciclador($reciclador, $solicitud)
-    {
-        // Obtener el usuario Auth asociado al reciclador
-        $authUser = AuthUser::where('profile_id', $reciclador->id)
-            ->where('role', 'reciclador')
-            ->first();
 
-        if (!$authUser || empty($authUser->fcm_token)) {
-            Log::warning('No se pudo enviar notificación al reciclador: no tiene token FCM', [
-                'reciclador_id' => $reciclador->id
-            ]);
-            return;
-        }
-
-        // Implementar envío de notificación según tu sistema
-        // Ejemplo usando el servicio Firebase:
-        FirebaseService::sendNotification($authUser->id, [
-            'title' => 'Nueva solicitud de recolección',
-            'body' => 'Hay una recolección inmediata cerca de ti',
-            'data' => [
-                'solicitud_id' => $solicitud->id,
-                'tipo' => 'solicitud_inmediata',
-                'latitud' => $solicitud->latitud,
-                'longitud' => $solicitud->longitud,
-                'direccion' => $solicitud->direccion,
-                'peso_total' => $solicitud->peso_total,
-                'distancia' => round($reciclador->distancia, 2) . ' km'
-            ]
-        ]);
-
-        Log::info('Notificación enviada al reciclador', [
-            'reciclador_id' => $reciclador->id,
-            'solicitud_id' => $solicitud->id
-        ]);
-    }
 
     /**
      * Verifica el estado actual de una solicitud inmediata
@@ -385,11 +322,7 @@ class SolicitudInmediataController extends Controller
             ], 403);
         }
 
-        Log::info('Verificando estado de la solicitud', [
-            'solicitud_id' => $solicitud->id,
-            'estado' => $solicitud->estado,
-            'reciclador_id' => $solicitud->reciclador_id,
-        ]);
+
 
         $respuesta = [
             'success' => true,
@@ -405,16 +338,4 @@ class SolicitudInmediataController extends Controller
     /**
      * Calcula la distancia entre dos puntos usando Haversine
      */
-    private function calcularDistancia($lat1, $lon1, $lat2, $lon2)
-    {
-        $earthRadius = 6371; // Radio de la Tierra en kilómetros
-
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLon = deg2rad($lon2 - $lon1);
-
-        $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) * sin($dLon / 2);
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-
-        return $earthRadius * $c; // Distancia en kilómetros
-    }
 }

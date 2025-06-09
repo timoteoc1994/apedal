@@ -67,9 +67,10 @@ class FirebaseService
             );
 
             // Crear mensaje con notificación y datos
-            $message = CloudMessage::withTarget('token', $user->fcm_token)
+            $message = CloudMessage::new()
                 ->withNotification($fcmNotification)
-                ->withData($notification['data'] ?? []);
+                ->withData($notification['data'] ?? [])
+                ->toToken($user->fcm_token);
 
             // Enviar mensaje
             $result = $messaging->send($message);
@@ -134,9 +135,10 @@ class FirebaseService
             );
 
             // Crear mensaje con notificación y datos
-            $message = CloudMessage::withTarget('topic', $topic)
+            $message = CloudMessage::new()
                 ->withNotification($fcmNotification)
-                ->withData($notification['data'] ?? []);
+                ->withData($notification['data'] ?? [])
+                ->toTopic($topic);
 
             // Enviar mensaje
             $result = $messaging->send($message);

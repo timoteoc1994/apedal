@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\FirebaseService;
 use App\Models\AuthUser;
 use App\Models\Ciudadano;
 use App\Models\Reciclador;
@@ -11,6 +12,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 
 class AuthController extends Controller
@@ -22,9 +26,18 @@ class AuthController extends Controller
             // Validar datos comunes
             $common = $request->validate([
                 'email' => 'required|email|unique:auth_users,email',
-                'password' => 'required|min:8|confirmed',
+                'password' => [
+                    'required',
+                    'string',
+                    'min:8',
+                    'confirmed',
+                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'
+                ],
                 'role' => 'required|in:ciudadano,reciclador,asociacion',
                 'fcm_token' => 'nullable|string', // Añadir validación para token FCM
+
+            ], [
+                'password.regex' => 'La contraseña debe tener al menos una mayúscula, una minúscula, un número y un carácter especial.'
             ]);
 
             // Validar datos específicos según el rol
@@ -41,6 +54,8 @@ class AuthController extends Controller
                 ]);
 
                 $profile = Ciudadano::create($profileData);
+                // Generar código de verificación
+                $verificationCode = rand(100000, 999999);
             } elseif ($common['role'] === 'reciclador') {
                 $profileData = $request->validate([
                     'name' => 'required|string',
@@ -63,19 +78,36 @@ class AuthController extends Controller
             }
 
             // Crear usuario de autenticación con el token FCM
-            $userData = [
-                'email' => $common['email'],
-                'password' => Hash::make($common['password']),
-                'role' => $common['role'],
-                'profile_id' => $profile->id,
-            ];
+            if ($common['role'] === 'ciudadano') {
+                $userData = [
+                    'email' => $common['email'],
+                    'password' => Hash::make($common['password']),
+                    'role' => $common['role'],
+                    'profile_id' => $profile->id,
+                    'email_verification_code' => $verificationCode,
+                ];
+                $user = AuthUser::create($userData);
+                // Enviar correo con el código
+                Mail::raw("Tu código de verificación es: $verificationCode", function ($message) use ($user) {
+                    $message->to($user->email)->subject('Código de verificación de correo');
+                });
+            } else {
+                $userData = [
+                    'email' => $common['email'],
+                    'password' => Hash::make($common['password']),
+                    'role' => $common['role'],
+                    'profile_id' => $profile->id,
+                ];
+                $user = AuthUser::create($userData);
+            }
+
 
             // Añadir el token FCM si está presente
             if ($request->has('fcm_token') && $request->fcm_token) {
                 $userData['fcm_token'] = $request->fcm_token;
             }
 
-            $user = AuthUser::create($userData);
+
 
             // Generar token si se usa Sanctum
             $token = $user->createToken('auth_token')->plainTextToken;
@@ -83,11 +115,11 @@ class AuthController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Registro exitoso',
-                'data' => [
+                /*                 'data' => [
                     'user' => $user,
                     'profile' => $profile,
                     'token' => $token
-                ]
+                ] */
             ], 201);
         } catch (ValidationException $e) {
             return response()->json([
@@ -119,6 +151,8 @@ class AuthController extends Controller
 
     public function solo_reciclador_register(Request $request)
     {
+        Log::info('Entrando a solo_reciclador_register');
+        Log::info('Datos recibidos: ' . json_encode($request->all()));
         try {
             // Validar datos comunes
             $common = $request->validate([
@@ -131,7 +165,7 @@ class AuthController extends Controller
             // Validar datos específicos según el rol
             $profileData = [];
             $profile = null;;
-
+            Log::info('Creando reciclador1');
 
             if ($common['role'] === 'reciclador') {
                 $profileData = $request->validate([
@@ -139,21 +173,25 @@ class AuthController extends Controller
                     'telefono' => 'required|string',
                     'asociacion_id' => 'required|exists:asociaciones,id',
                 ]);
+                Log::info('Creando reciclador2');
                 //anadir variables a $profileData
                 //buscar ciudad de la asociacion
                 $asociacion = Asociacion::find($request->asociacion_id);
                 $id_de_auth = AuthUser::where('profile_id', $asociacion->id)->where('role', 'asociacion')->first();
-
-                $profileData['asociacion_id'] =  $id_de_auth->id;
+                Log::info('Creando reciclador3');
+                $profileData['asociacion_id'] =   $asociacion->id;
                 $profileData['ciudad'] = $asociacion->city;
                 $profileData['estado'] = 'Inactivo';
                 $profileData['status'] = 'inactivo';
-
+                $profileData['is_new'] = 'true';
+                Log::info('Creando reciclador4');
 
                 $profile = Reciclador::create($profileData);
+                Log::info('Creando reciclador5');
             }
 
-            // Crear usuario de autenticación con el token FCM
+            Log::info('Creando reciclador');
+
             $userData = [
                 'email' => $common['email'],
                 'password' => Hash::make($common['password']),
@@ -168,6 +206,15 @@ class AuthController extends Controller
 
             $user = AuthUser::create($userData);
 
+            //enviar notificacion que tiene un nueva solcitud de reciclador
+            FirebaseService::sendNotification($id_de_auth->id, [
+                'title' => 'Tienes una nueva solicitud de reciclador',
+                'body' => 'Un reciclador ha solicitado su registro',
+                'data' => [
+                    'route' => '/nuevas_solcitudes_recicladores',
+                ]
+            ]);
+
             // Generar token si se usa Sanctum
             $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -181,12 +228,14 @@ class AuthController extends Controller
                 ]
             ], 201);
         } catch (ValidationException $e) {
+            Log::error('Error de base de datos: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Errores de validación',
                 'errors' => $e->errors()
             ], 422);
         } catch (QueryException $e) {
+            Log::error('Error de base de datos: ' . $e->getMessage());
             // Manejo de errores de base de datos
             if ($e->getCode() == 23505 || $e->getCode() == 1062) { // Códigos para clave duplicada en PostgreSQL y MySQL
                 return response()->json([
@@ -238,6 +287,13 @@ class AuthController extends Controller
             // Obtener datos específicos del perfil
             $profileData = null;
             if ($user->role === 'ciudadano') {
+                //verificar si $user->email_verified_at es null
+                if ($user->email_verified_at == null) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El correo electrónico no ha sido verificado'
+                    ], 401);
+                }
                 $profileData = Ciudadano::find($user->profile_id);
             } elseif ($user->role === 'reciclador') {
                 $profileData = Reciclador::with('asociacion:id,name')->find($user->profile_id);
@@ -461,6 +517,145 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener perfil',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function verificarEmail(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'code' => 'required'
+        ]);
+
+        Log::info('Email: ' . $request->email);
+        Log::info('Código: ' . $request->code);
+
+        $user = AuthUser::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+        }
+
+        if ($user->email_verification_code == $request->code) {
+            $user->email_verified_at = now();
+            $user->email_verification_code = null;
+            $user->save();
+
+            return response()->json(['success' => true, 'message' => 'Correo verificado correctamente']);
+        } else {
+            return response()->json(['success' => false, 'message' => 'Código incorrecto'], 400);
+        }
+    }
+    public function reenviarCodigo(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
+
+        $user = AuthUser::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+        }
+
+        // Generar nuevo código
+        $codigo = rand(100000, 999999);
+        $user->email_verification_code = $codigo;
+        $user->save();
+
+        // Enviar correo
+        Mail::raw("Tu nuevo código de verificación es: $codigo", function ($message) use ($user) {
+            $message->to($user->email)
+                ->subject('Nuevo código de verificación');
+        });
+
+        return response()->json(['success' => true, 'message' => 'Código reenviado']);
+    }
+    public function enviarCodigoRecuperacion(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
+
+        $user = AuthUser::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No existe una cuenta con ese correo'
+            ], 404);
+        }
+
+        // Generar código de recuperación
+        $codigo = rand(100000, 999999);
+        $user->email_verification_code = $codigo;
+        $user->save();
+
+        // Enviar correo
+        Mail::raw("Tu código para recuperar tu contraseña es: $codigo", function ($message) use ($user) {
+            $message->to($user->email)
+                ->subject('Código para recuperar contraseña');
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Código enviado a tu correo'
+        ]);
+    }
+    public function restablecerContrasena(Request $request)
+    {
+        try {
+            $request->validate([
+                'email' => 'required|email',
+                'code' => 'required',
+                'password' => [
+                    'required',
+                    'string',
+                    'min:8',
+                    'confirmed',
+                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'
+                ],
+            ], [
+                'password.regex' => 'La contraseña debe tener al menos una mayúscula, una minúscula, un número y un carácter especial.'
+            ]);
+
+            $user = AuthUser::where('email', $request->email)->first();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No existe una cuenta con ese correo'
+                ], 404);
+            }
+
+            if ($user->email_verification_code != $request->code) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Código incorrecto'
+                ], 400);
+            }
+
+            // Cambiar la contraseña y limpiar el código
+            $user->password = bcrypt($request->password);
+            $user->email_verification_code = null;
+            $user->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Contraseña restablecida correctamente'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errores de validación',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error inesperado',
                 'error' => $e->getMessage()
             ], 500);
         }

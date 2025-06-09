@@ -85,7 +85,43 @@ class ActualizarPerfilController extends Controller
                         'profile' => $reciclador
                     ]
                 ]);
-            } else if ($user->role === 'asociacion') {
+            } else if ($user->role == 'asociacion') {
+
+
+                $validatedData = $request->validate([
+                    'email' => 'required|email|unique:auth_users,email,' . $user->id,
+                    'name' => 'required|string|max:255',
+                    'number_phone' => 'required|string|max:15',
+                    'direccion' => 'required|string',
+                    'city' => 'required|string',
+                    'descripcion' => 'nullable|string',
+                ]);
+
+
+                // Actualizar el email del usuario
+                $user->email = $validatedData['email'];
+                $user->save();
+
+                // Acceder al perfil de la asociacion
+                $asociacion = $user->asociacion;
+
+                // Actualizar los datos del asociacion
+                $asociacion->name = $validatedData['name'];
+                $asociacion->number_phone = $validatedData['number_phone'];
+                $asociacion->direccion = $validatedData['direccion'];
+                $asociacion->city = $validatedData['city'];
+                $asociacion->descripcion = $validatedData['descripcion'] ?? $asociacion->descripcion;
+                $asociacion->save();
+
+                // Devolver respuesta exitosa
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Perfil actualizado correctamente',
+                    'data' => [
+                        'user' => $user,
+                        'profile' => $asociacion
+                    ]
+                ]);
             } else {
                 return response()->json([
                     'success' => false,
@@ -226,6 +262,56 @@ class ActualizarPerfilController extends Controller
                     ]);
                 }
             } else if ($user->role === 'asociacion') {
+                $validatedData = $request->validate([
+                    'email' => 'required|email|unique:auth_users,email,' . $user->id,
+                    'name' => 'required|string|max:255',
+                    'number_phone' => 'required|string|max:15',
+                    'direccion' => 'required|string',
+                    'city' => 'required|string',
+                    'descripcion' => 'nullable|string',
+                    'profile_image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                ]);
+                // Acceder al perfil de la asociacion
+                $asociacion = $user->asociacion;
+                if ($request->hasFile('profile_image')) {
+                    // Eliminar imagen anterior si existe
+                    if ($asociacion->logo_url) {
+                        $oldPath = $asociacion->logo_url;
+                        $oldImagePath = public_path(ltrim($oldPath, '/')); // Quitar la barra inicial si existe
+                        if (file_exists($oldImagePath)) {
+                            unlink($oldImagePath);
+                        }
+                        // Generar un nombre único para la imagen
+                        $imageName = 'asociacion_' . $asociacion->id . '_' . time() . '.' . $request->profile_image->extension();
+                        // Guardar la imagen en el almacenamiento
+                        $request->profile_image->storeAs('profiles', $imageName, 'public');
+                        // Guardar SOLO la ruta relativa para la imagen (sin el dominio)
+                        $relativePath = '/storage/profiles/' . $imageName;
+                        // Actualizar el email del usuario
+                        $user->email = $validatedData['email'];
+                        $user->save();
+                        // Actualizar los datos del asociacion
+                        $asociacion->name = $validatedData['name'];
+                        $asociacion->number_phone = $validatedData['number_phone'];
+                        $asociacion->direccion = $validatedData['direccion'];
+                        $asociacion->city = $validatedData['city'];
+                        $asociacion->descripcion = $validatedData['descripcion'] ?? $asociacion->descripcion;
+                        // Actualizar URL de la imagen si se subió una nueva
+                        if (isset($relativePath)) {
+                            $asociacion->logo_url = $relativePath;
+                        }
+                        $asociacion->save();
+                        // Devolver respuesta exitosa
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Perfil actualizado correctamente con nueva imagen',
+                            'data' => [
+                                'user' => $user,
+                                'profile' => $asociacion
+                            ]
+                        ]);
+                    }
+                }
             } else {
                 return response()->json([
                     'success' => false,

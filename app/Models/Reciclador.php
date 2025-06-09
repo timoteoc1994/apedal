@@ -24,6 +24,7 @@ class Reciclador extends Model
         'status',
         'estado',
         'logo_url',
+        'is_new'
     ];
 
     /**

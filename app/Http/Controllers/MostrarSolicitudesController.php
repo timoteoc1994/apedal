@@ -12,8 +12,10 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-
+use App\Services\FirebaseService;
 use Kreait\Firebase\Messaging\CloudMessage;
+use App\Events\EliminacionSolicitud;
+
 
 
 class MostrarSolicitudesController extends Controller
@@ -288,7 +290,7 @@ class MostrarSolicitudesController extends Controller
             $solicitud = SolicitudRecoleccion::findOrFail($request->solicitud_id);
 
             // Verificar si la solicitud ya está asignada o completada o cancelada
-            if (in_array($solicitud->estado, ['asignado', 'en_camino', 'completado', 'cancelado'])) {
+            if (in_array($solicitud->estado, ['asignado', 'en_camino', 'completado', 'cancelado', 'pendiente'])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'La solicitud ya está ' . $this->formatearEstado($solicitud->estado),
@@ -318,23 +320,6 @@ class MostrarSolicitudesController extends Controller
                     'message' => 'Este reciclador no pertenece a tu asociación',
                 ], 400);
             }
-
-            // Verificar el estado del reciclador (usando el campo 'status')
-            if ($reciclador->status !== 'disponible') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'El reciclador no está disponible en este momento',
-                ], 400);
-            }
-
-            // Verificar que el reciclador esté activo
-            if ($reciclador->estado !== 'Activo') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Este reciclador está inactivo y no puede ser asignado',
-                ], 400);
-            }
-
             DB::beginTransaction();
 
             // Actualizar la solicitud
@@ -343,30 +328,34 @@ class MostrarSolicitudesController extends Controller
             $solicitud->estado = 'asignado';
             $solicitud->save();
 
-            //Actualizar el estado del reciclador a "en_ruta"
-            $reciclador->status = 'disponible';
-            $reciclador->save();
 
             DB::commit();
 
             // Notificar al reciclador (si tiene token de FCM)
             // Enviar notificación al reciclador que debe realizar la solcitud
-            if ($recicladorUser) {
-                // Buscar el usuario de esta asociación que tenga token FCM
-                if ($recicladorUser && $recicladorUser->fcm_token) {
-                    $this->enviarNotificacion2(
-                        $recicladorUser->fcm_token,
-                        'Nueva solicitud de recolección',
-                        'Tienes una nueva recoleccion que debes realizar.',
-                        [
-                            'solicitud_id' => (string)$solicitud->id,
-                            'tipo' => 'nueva_solicitud',
-                            'reciclador_id' => (string)$recicladorUser->id,
-                            'direccion' => $solicitud->direccion,
-                            'peso_total' => (string)$solicitud->peso_total
-                        ]
-                    );
-                }
+            FirebaseService::sendNotification($recicladorUser->id, [
+                'title' => 'Te agendo una nueva recoleccion',
+                'body' => $asociacion->name . ' ha asignado una nueva recoleccion',
+                'data' => [
+                    'route' => '/',
+                    'solicitud_id' => (string)$solicitud->id,
+                ]
+            ]);
+
+            FirebaseService::sendNotification($solicitud->user_id, [
+                'title' => 'Tu solicitud agendada fue aceptada',
+                'body' => 'Puedes ver los detalles ahora',
+                'data' => [
+                    'route' => '/detalle_solicitud_ciudadano',
+                    'solicitud_id' => (string)$solicitud->id,
+                ] // Este campo es opcional pero recomendado
+            ]);
+
+            //Enviar el evento que la solicitud ya fue asignada y borrar en todas las pantallas
+            // Disparar eventos para eliminar solicitudes
+            $ids_disponibles = json_decode($solicitud->ids_disponibles);
+            foreach ($ids_disponibles as $id_disponible) {
+                EliminacionSolicitud::dispatch($solicitud, $id_disponible);
             }
 
             return response()->json([

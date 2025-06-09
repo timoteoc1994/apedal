@@ -12,6 +12,7 @@ use App\Http\Controllers\Prueba;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Redis;
 use App\Http\Controllers\TrackingController;
+use App\Http\Controllers\AppVersionController;
 // Ruta para autenticación de canales (debe estar en web.php, no en api.php)
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
@@ -23,14 +24,6 @@ Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::get('/test-broadcast', function () {
-    broadcast(new EnviarMensaje("Hola desde Laravel!"));
-    return "Evento enviado";
-});
-Route::get('/emitir', function () {
-    broadcast(new EnviarMensaje('Mensaje de prueba desde /emitir'));
-    return 'Evento emitido';
-});
 //disparar vento para actualizar cambios en la solcitudes
 Route::get('/cambio', [Prueba::class, 'index']);
 
@@ -57,6 +50,11 @@ Route::middleware(['auth'])->group(function () {
     //para las asociasiones
     Route::post('/asociations', [AsociacionController::class, 'store'])->name('asociation.store');
     Route::delete('/asociacion/{id}', [AsociacionController::class, 'eliminarAsociacion'])->name('asociation.index.delete');
+
+    //crud para version
+    Route::get('/versiones', [AppVersionController::class, 'index'])->name('versions.index');
+    Route::put('/versiones/{appVersion}', [AppVersionController::class, 'update'])->name('versions.update');
+    Route::post('/versiones', [AppVersionController::class, 'store'])->name('versions.store');
 });
 
 Route::get('/auto-message', [AutoMessageController::class, 'index']);
