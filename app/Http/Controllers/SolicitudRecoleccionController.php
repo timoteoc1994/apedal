@@ -52,6 +52,7 @@ class SolicitudRecoleccionController extends Controller
                 'estado' => $solicitud->estado,
                 'solicitud' => [
                     'id' => $solicitud->id,
+                    'reciclador_id' => $solicitud->reciclador_id,
                     'direccion' => $solicitud->direccion,
                     'referencia' => $solicitud->referencia,
                     'latitud' => $solicitud->latitud,

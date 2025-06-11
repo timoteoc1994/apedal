@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\AuthUser;
 use App\Services\FirebaseService;
 use Carbon\Carbon;
+use App\Events\SolicitudCompleto;
 
 class RecicladorController extends Controller
 {
@@ -735,6 +736,8 @@ class RecicladorController extends Controller
 
                 // Confirmar transacción
                 DB::commit();
+                //emitir el evento que se completo
+                event(new SolicitudCompleto($solicitud->id));
 
                 return response()->json([
                     'success' => true,

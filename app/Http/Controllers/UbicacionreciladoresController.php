@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Reciclador;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
+use App\Events\UbicacionActualizada;
 
 class UbicacionreciladoresController extends Controller
 {
@@ -19,9 +20,7 @@ class UbicacionreciladoresController extends Controller
      */
     public function updateLocation(Request $request)
     {
-        $user = Auth::user();
-
-
+        $user = Auth::user();;
         // Validar los datos recibidos
         $validated = $request->validate([
             'latitude' => 'required|numeric',
@@ -56,7 +55,11 @@ class UbicacionreciladoresController extends Controller
             300, // Expira en 5 minutos
             json_encode($locationData)
         );
-
+        $ubicacion = [
+            'latitude' => $validated['latitude'],
+            'longitude' => $validated['longitude'],
+        ];
+        UbicacionActualizada::dispatch($user->id, $ubicacion);
         // 2. Guardar en Redis GEO para búsquedas espaciales
         if ($status === 'disponible' || $status === 'en_ruta') {
             Redis::geoadd(
