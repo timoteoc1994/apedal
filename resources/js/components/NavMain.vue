@@ -20,8 +20,8 @@ const isActive = (href: string) => {
 </script>
 
 <template>
-    <SidebarGroup class="px-2 py-0">
-        <SidebarGroupLabel>Plataforma</SidebarGroupLabel>
+    <SidebarGroup class="px-2 py-0 text-[#E9E7FF]">
+        <SidebarGroupLabel class="text-[#E9E7FF] text-sm font-semibold">Plataforma</SidebarGroupLabel>
         <SidebarMenu>
             <SidebarMenuItem v-for="item in items" :key="item.title">
                 <SidebarMenuButton as-child :is-active="isActive(item.href)">
