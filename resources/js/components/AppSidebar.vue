@@ -39,6 +39,11 @@ const mainNavItems: NavItem[] = [
         href: route('ciudadano.index'),
         icon: Building,
     },
+    {
+        title: 'Recicladores',
+        href: route('reciclador.index'),
+        icon: Building,
+    },
     
 ];
 

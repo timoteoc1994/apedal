@@ -6,7 +6,8 @@ use Inertia\Inertia;
 use App\Http\Controllers\ViewAsociationController;
 use App\Http\Controllers\CityController;
 use App\Http\Controllers\ZonaController;
-use App\Http\Controllers\CiudadanoController;
+use App\Http\Controllers\CiudadanoController; 
+use App\Http\Controllers\RecicladorController;
 use App\Events\EnviarMensaje;
 use App\Http\Controllers\AutoMessageController;
 use App\Http\Controllers\Prueba;
@@ -73,6 +74,19 @@ Route::get('/ciudadanos/{id}/editar', [CiudadanoController::class, 'edit'])->nam
 
 // Ruta para procesar la actualización de ciudadano
 Route::put('/ciudadanos/{id}', [CiudadanoController::class, 'update'])->name('ciudadano.update');
+
+
+
+Route::get('/recicladores', [RecicladorController::class, 'index'])->name('reciclador.index');
+
+// Guardar el nuevo reciclador
+Route::post('/crear-reciclador', [RecicladorController::class, 'storeReciclador'])
+     ->name('reciclador.store');
+     
+Route::get('/crear-reciclador', [RecicladorController::class, 'createReciclador'])->name('reciclador.create');
+Route::delete('/recicladores/{id}', [RecicladorController::class, 'deleteReciclador'])->name('reciclador.delete');
+
+
 });
 
 Route::get('/auto-message', [AutoMessageController::class, 'index']);
