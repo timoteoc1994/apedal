@@ -67,8 +67,8 @@ export default {
         },
 
         editCiudadano(id) {
-            console.log(`Editar ciudadano con ID: ${id}`);
-        },
+    this.$inertia.visit(`/ciudadanos/${id}/editar`);
+},
 
         async deleteCiudadano(id) {
             const confirmation = await Swal.fire({

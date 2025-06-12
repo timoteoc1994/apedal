@@ -91,7 +91,47 @@ class CiudadanoController extends Controller
 
     
     
+    // Método para mostrar el formulario de edición con los datos del ciudadano
+    public function edit($id)
+    {
+        $ciudadano = Ciudadano::findOrFail($id); // Buscar el ciudadano por ID
+        $cities = City::orderBy('name')->get(); // Obtener todas las ciudades
     
+        // Renderizar la vista de edición con Inertia
+        return Inertia::render('Ciudadano/Edit', [
+            'ciudadano' => $ciudadano, // Pasar el ciudadano a la vista
+            'cities' => $cities->isEmpty() ? null : $cities // Pasar las ciudades al frontend
+        ]);
+    }
+
+// Método para actualizar el ciudadano
+public function update(Request $request, $id)
+{
+    try {
+        $data = $request->validate([
+            'name' => 'required|string',
+            'telefono' => 'nullable|string',
+            'direccion' => 'required|string',
+            'ciudad' => 'required|string|exists:cities,name',
+        ]);
+
+        $ciudadano = Ciudadano::findOrFail($id);
+        $ciudadano->update([
+            'name' => $data['name'],
+            'telefono' => $data['telefono'],
+            'direccion' => $data['direccion'],
+            'ciudad' => $data['ciudad'],
+        ]);
+
+        return redirect()->route('ciudadano.edit', $id)->with('successMessage', 'Ciudadano actualizado exitosamente');
+    } catch (ValidationException $e) {
+        return back()->withErrors($e->errors());
+    } catch (\Exception $e) {
+        \Log::error('Error al actualizar ciudadano: ' . $e->getMessage());
+        return back()->with('errorMessage', 'Error al actualizar ciudadano');
+    }
+}
+
 public function deleteCiudadano($id)
 {
     try {

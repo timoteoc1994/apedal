@@ -67,7 +67,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/ciudadanos', [CiudadanoController::class, 'index'])->name('ciudadano.index');
 // Ruta para eliminar un ciudadano
 Route::delete('/ciudadanos/{id}', [CiudadanoController::class, 'deleteCiudadano'])->name('ciudadano.delete');
+// Ruta para mostrar el formulario de edición
+// Ruta para mostrar el formulario de edición de ciudadano
+Route::get('/ciudadanos/{id}/editar', [CiudadanoController::class, 'edit'])->name('ciudadano.edit');
 
+// Ruta para procesar la actualización de ciudadano
+Route::put('/ciudadanos/{id}', [CiudadanoController::class, 'update'])->name('ciudadano.update');
 });
 
 Route::get('/auto-message', [AutoMessageController::class, 'index']);
