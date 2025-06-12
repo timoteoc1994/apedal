@@ -6,6 +6,7 @@ use Inertia\Inertia;
 use App\Http\Controllers\ViewAsociationController;
 use App\Http\Controllers\CityController;
 use App\Http\Controllers\ZonaController;
+use App\Http\Controllers\CiudadanoController;
 use App\Events\EnviarMensaje;
 use App\Http\Controllers\AutoMessageController;
 use App\Http\Controllers\Prueba;
@@ -55,6 +56,18 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/versiones', [AppVersionController::class, 'index'])->name('versions.index');
     Route::put('/versiones/{appVersion}', [AppVersionController::class, 'update'])->name('versions.update');
     Route::post('/versiones', [AppVersionController::class, 'store'])->name('versions.store');
+
+    Route::get('/crear-ciudadano', [CiudadanoController::class, 'create'])->name('ciudadano.create');
+
+
+    // Ruta para procesar la creación del ciudadano y usuario
+    Route::post('/crear-ciudadano', [CiudadanoController::class, 'createCiudadano'])->name('ciudadano.create');
+
+    // Ruta para mostrar la lista de ciudadanos
+    Route::get('/ciudadanos', [CiudadanoController::class, 'index'])->name('ciudadano.index');
+// Ruta para eliminar un ciudadano
+Route::delete('/ciudadanos/{id}', [CiudadanoController::class, 'deleteCiudadano'])->name('ciudadano.delete');
+
 });
 
 Route::get('/auto-message', [AutoMessageController::class, 'index']);

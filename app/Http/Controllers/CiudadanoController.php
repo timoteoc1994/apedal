@@ -5,11 +5,121 @@ namespace App\Http\Controllers;
 use App\Models\Solicitud;
 use App\Models\Ciudadano;
 use App\Models\Asociacion;
+use App\Models\City;
+use App\Models\User;
+use App\Models\AuthUser;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Illuminate\Support\Facades\Log;
 
 class CiudadanoController extends Controller
 {
+    /**
+     * Muestra el listado de ciudadanos
+     */
+    // En el controlador CiudadanoController.php
+    public function index()
+    {
+        $ciudadanos = Ciudadano::all();  // Obtener todos los ciudadanos
+
+        return Inertia::render('Ciudadano/index', [
+            'ciudadanos' => $ciudadanos  // Pasar los ciudadanos a la vista
+        ]);
+    }
+
+
+    /**
+     * Muestra el formulario de creación
+     */
+    public function create()
+{
+    $cities = City::orderBy('name')->get();
+
+    return Inertia::render('Ciudadano/Create', [
+        'cities' => $cities->isEmpty() ? null : $cities  // Pasar las ciudades al frontend
+    ]);
+}
+
+    /**
+     * Almacena un nuevo ciudadano
+     */
+    public function createCiudadano(Request $request)
+{
+    try {
+        // Validación de los datos recibidos
+        $data = $request->validate([
+            'name' => 'required|string',
+            'telefono' => 'nullable|string',
+            'direccion' => 'required|string',
+            'ciudad' => 'required|string|exists:cities,name', // Asegúrate de que la ciudad exista
+            'logo_url' => 'nullable|string',
+            'email' => 'required|email|unique:users,email', // Validación del email único
+            'password' => 'required|string|min:8', // Validación de la contraseña
+            'role' => 'required|in:ciudadano', // El role siempre debe ser 'ciudadano'
+        ]);
+
+        // Crear el ciudadano
+        $ciudadano = Ciudadano::create([
+            'name' => $data['name'],
+            'telefono' => $data['telefono'] ?? null,
+            'direccion' => $data['direccion'],
+            'ciudad' => $data['ciudad'],
+            'logo_url' => $data['logo_url'] ?? null,
+        ]);
+
+        // Crear el usuario asociado al ciudadano
+        $authUser = AuthUser::create([
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+            'role' => 'ciudadano', // Role siempre será 'ciudadano'
+            'profile_id' => $ciudadano->id,  // Vinculamos el profile_id con el ID del ciudadano
+        ]);
+
+        // Redirigir con mensaje de éxito
+        return redirect()->route('ciudadano.create')->with('successMessage', 'Ciudadano y usuario creados exitosamente');
+    } catch (ValidationException $e) {
+        // En caso de error de validación
+        return back()->withErrors($e->errors());
+    } catch (\Exception $e) {
+        // En caso de error general
+        \Log::error('Error al crear ciudadano y usuario: ' . $e->getMessage());
+        return back()->with('errorMessage', 'Error al crear ciudadano y usuario');
+    }
+}
+
+    
+    
+    
+public function deleteCiudadano($id)
+{
+    try {
+        $ciudadano = Ciudadano::findOrFail($id);
+        $authUser = AuthUser::where('profile_id', $ciudadano->id)->first();
+        if ($authUser) {
+            $authUser->delete();
+        }
+        $ciudadano->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ciudadano eliminado correctamente.'
+        ]);
+    } catch (\Exception $e) {
+        \Log::error('Error al eliminar ciudadano: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al eliminar ciudadano',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+
+
+
+    
     /**
      * Obtener todas las solicitudes del ciudadano autenticado
      */
@@ -18,6 +128,13 @@ class CiudadanoController extends Controller
         try {
             $user = $request->user();
             $ciudadano = Ciudadano::find($user->profile_id);
+
+            if (!$ciudadano) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ciudadano no encontrado'
+                ], 404);
+            }
 
             $solicitudes = Solicitud::with(['asociacion:id,name,number_phone', 'reciclador:id,name,telefono'])
                 ->where('ciudadano_id', $ciudadano->id)
@@ -30,6 +147,7 @@ class CiudadanoController extends Controller
                 'data' => $solicitudes
             ]);
         } catch (\Exception $e) {
+            Log::error('Error al obtener solicitudes: '.$e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener solicitudes',
@@ -46,6 +164,13 @@ class CiudadanoController extends Controller
         try {
             $user = $request->user();
             $ciudadano = Ciudadano::find($user->profile_id);
+
+            if (!$ciudadano) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ciudadano no encontrado'
+                ], 404);
+            }
 
             $solicitud = Solicitud::with(['asociacion:id,name,number_phone', 'reciclador:id,name,telefono'])
                 ->where('ciudadano_id', $ciudadano->id)
@@ -65,6 +190,7 @@ class CiudadanoController extends Controller
                 'data' => $solicitud
             ]);
         } catch (\Exception $e) {
+            Log::error('Error al obtener solicitud: '.$e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener solicitud',
@@ -82,6 +208,13 @@ class CiudadanoController extends Controller
             $user = $request->user();
             $ciudadano = Ciudadano::find($user->profile_id);
 
+            if (!$ciudadano) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ciudadano no encontrado'
+                ], 404);
+            }
+
             $data = $request->validate([
                 'direccion' => 'required|string',
                 'ciudad' => 'required|string',
@@ -92,7 +225,6 @@ class CiudadanoController extends Controller
                 'asociacion_id' => 'required|exists:asociaciones,id',
             ]);
 
-            // Asegurarse de que la asociación exista
             $asociacion = Asociacion::find($data['asociacion_id']);
             if (!$asociacion) {
                 return response()->json([
@@ -101,7 +233,6 @@ class CiudadanoController extends Controller
                 ], 404);
             }
 
-            // Crear la solicitud
             $solicitud = new Solicitud([
                 'ciudadano_id' => $ciudadano->id,
                 'asociacion_id' => $data['asociacion_id'],
@@ -128,6 +259,7 @@ class CiudadanoController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
+            Log::error('Error al crear solicitud: '.$e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al crear solicitud',
@@ -145,6 +277,13 @@ class CiudadanoController extends Controller
             $user = $request->user();
             $ciudadano = Ciudadano::find($user->profile_id);
 
+            if (!$ciudadano) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ciudadano no encontrado'
+                ], 404);
+            }
+
             $solicitud = Solicitud::where('ciudadano_id', $ciudadano->id)
                 ->where('id', $id)
                 ->first();
@@ -156,7 +295,6 @@ class CiudadanoController extends Controller
                 ], 404);
             }
 
-            // Verificar si la solicitud puede ser cancelada
             if ($solicitud->status === 'completada') {
                 return response()->json([
                     'success' => false,
@@ -173,6 +311,7 @@ class CiudadanoController extends Controller
                 'data' => $solicitud
             ]);
         } catch (\Exception $e) {
+            Log::error('Error al cancelar solicitud: '.$e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al cancelar solicitud',
@@ -189,6 +328,7 @@ class CiudadanoController extends Controller
         try {
             $asociaciones = Asociacion::where('verified', true)
                 ->select('id', 'name', 'number_phone', 'city')
+                ->orderBy('name')
                 ->get();
 
             return response()->json([
@@ -197,6 +337,7 @@ class CiudadanoController extends Controller
                 'data' => $asociaciones
             ]);
         } catch (\Exception $e) {
+            Log::error('Error al obtener asociaciones: '.$e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener asociaciones',

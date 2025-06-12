@@ -87,9 +87,9 @@ class CityController extends Controller
     }
 
     public function getCities()
-{
-    $cities = City::all(['id', 'name']);
-    return response()->json($cities);
-}
-
+    {
+        // Obtén todas las ciudades solo con ID y name
+        $cities = City::all(['id', 'name']);
+        return response()->json($cities);
+    }
 }
