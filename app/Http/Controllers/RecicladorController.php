@@ -156,6 +156,56 @@ class RecicladorController extends Controller
     }
 }
 
+public function editReciclador($id)
+{
+    // Obtener el reciclador por ID
+    $reciclador = Reciclador::findOrFail($id);
+
+    // Obtener las asociaciones y ciudades
+    $asociaciones = Asociacion::all();
+    $ciudades = City::all();
+
+    return Inertia::render('Reciclador/Edit', [
+        'reciclador' => $reciclador,
+        'asociaciones' => $asociaciones,
+        'ciudades' => $ciudades
+    ]);
+}
+
+
+public function updateReciclador(Request $request, $id)
+{
+    try {
+        // Validar los datos recibidos
+        $data = $request->validate([
+            'name' => 'required|string',
+            'telefono' => 'required|string',
+            'ciudad' => 'required|string',
+            'asociacion_id' => 'required|exists:asociaciones,id',
+            'estado' => 'required|in:Activo,Inactivo',
+        ]);
+
+        // Buscar el reciclador por ID
+        $reciclador = Reciclador::findOrFail($id);
+
+        // Actualizar los datos del reciclador
+        $reciclador->update([
+            'name' => $data['name'],
+            'telefono' => $data['telefono'],
+            'ciudad' => $data['ciudad'],
+            'asociacion_id' => $data['asociacion_id'],
+            'estado' => $data['estado'],
+        ]);
+
+        // Responder con éxito
+        return response()->json(['success' => true, 'message' => 'Reciclador actualizado con éxito']);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => 'Error al actualizar reciclador', 'error' => $e->getMessage()], 500);
+    }
+}
+
+
+
     // En un controlador como RecicladorController.php
     public function Pendientes(Request $request)
     {

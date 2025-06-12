@@ -86,6 +86,9 @@ Route::post('/crear-reciclador', [RecicladorController::class, 'storeReciclador'
 Route::get('/crear-reciclador', [RecicladorController::class, 'createReciclador'])->name('reciclador.create');
 Route::delete('/recicladores/{id}', [RecicladorController::class, 'deleteReciclador'])->name('reciclador.delete');
 
+Route::get('/recicladores/{id}/editar', [RecicladorController::class, 'editReciclador'])->name('reciclador.edit');
+Route::put('/recicladores/{id}', [RecicladorController::class, 'updateReciclador'])->name('reciclador.update');
+
 
 });
 
