@@ -155,17 +155,13 @@ class ImpactoAmbientalController extends Controller
 
                 ]
             ],
-            'relleno' => [
-                'peso_total' => round($suma_papel + $total_plasticos_calculo + $total_calculo_aluminio, 2),
-                'impactos' => [
-                    "Se ha evitado enviar a relleno sanitario el contenido de  " . round($suma_desechos_carros_recolector, 5) . " carros recolectores de residuos solidos",
-                ]
-            ],
+
 
             'resumen_total' => [
                 'total_consumo_agua' => round($total_evitado_consumo_agua, 0),
                 'total_emitir_admosfera' => round($total_evitado_emitir_admosfera, 0),
                 'total_consumo_energia' => round($total_evitado_consumo_kwh, 0),
+                'relleno_carro_recolector' => round($suma_desechos_carros_recolector, 5),
             ]
         ];
 

@@ -20,7 +20,7 @@ class UbicacionreciladoresController extends Controller
      */
     public function updateLocation(Request $request)
     {
-        $user = Auth::user();;
+        $user = Auth::user();
         // Validar los datos recibidos
         $validated = $request->validate([
             'latitude' => 'required|numeric',
@@ -72,6 +72,9 @@ class UbicacionreciladoresController extends Controller
 
         // 3. Guardar estado del reciclador
         Redis::hset("recycler:status", $user->id, $status);
+        if ($status === 'en_ruta') {
+            UbicacionActualizada::dispatch($user->id, $ubicacion);
+        }
 
         // 4. Si el estado es inactivo, remover de ubicaciones activas
         if ($status === 'inactivo') {

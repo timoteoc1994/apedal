@@ -669,7 +669,7 @@ class RecicladorController extends Controller
                 'materiales.*.tipo' => 'required|string',
                 'materiales.*.peso' => 'required|numeric|min:0',
                 'peso_total' => 'required|numeric|min:0',
-                'calificacion' => 'required|integer|min:1|max:5',
+                'calificacion' => 'required|integer|min:1|max:50',
             ]);
 
             if ($validator->fails()) {
