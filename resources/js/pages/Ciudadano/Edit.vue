@@ -1,5 +1,10 @@
 <template>
-  <div class="max-w-3xl mx-auto p-6 bg-white rounded-lg shadow-md">
+    <Head title="Ciudadanos" />
+
+    <AppLayout :breadcrumbs="breadcrumbs">
+        <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+            
+          <div class="p-6 bg-white rounded-lg shadow-md">
     <div class="text-center mb-6">
       <h1 class="text-3xl font-semibold text-gray-900">Editar Ciudadano</h1>
       <p class="text-gray-600">Modifica la información del ciudadano</p>
@@ -102,9 +107,23 @@
       </div>
     </form>
   </div>
+        </div>
+    </AppLayout>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import AppLayout from '@/layouts/AppLayout.vue';
+import { type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/vue3';
+
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Dashboard',
+        href: '/dashboard',
+    },
+];
+
 import { useForm, usePage } from '@inertiajs/vue3'
 import { ref, onMounted, computed } from 'vue'
 import Swal from 'sweetalert2'

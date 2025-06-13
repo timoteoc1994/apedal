@@ -78,7 +78,9 @@ class CiudadanoController extends Controller
         ]);
 
         // Redirigir con mensaje de éxito
-        return redirect()->route('ciudadano.create')->with('successMessage', 'Ciudadano y usuario creados exitosamente');
+         // Redirigir al índice con mensaje
+         return Redirect::route('ciudadano.index')
+         ->with('message', 'Ciudadano y usuario creados exitosamente');
     } catch (ValidationException $e) {
         // En caso de error de validación
         return back()->withErrors($e->errors());
@@ -123,7 +125,7 @@ public function update(Request $request, $id)
             'ciudad' => $data['ciudad'],
         ]);
 
-        return redirect()->route('ciudadano.edit', $id)->with('successMessage', 'Ciudadano actualizado exitosamente');
+        return redirect()->route('ciudadano.index', $id)->with('successMessage', 'Ciudadano actualizado exitosamente');
     } catch (ValidationException $e) {
         return back()->withErrors($e->errors());
     } catch (\Exception $e) {

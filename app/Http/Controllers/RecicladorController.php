@@ -61,10 +61,10 @@ class RecicladorController extends Controller
 
     public function index()
     {
-        $recicladores = Reciclador::all();  // Obtener todos los recicladores
-
+        $recicladores = Reciclador::with('asociacion')->get();
+    
         return Inertia::render('Reciclador/index', [
-            'recicladores' => $recicladores  // Pasar los recicladores a la vista
+            'recicladores' => $recicladores,
         ]);
     }
 
