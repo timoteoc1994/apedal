@@ -9,13 +9,6 @@ class Ciudadano extends Model
 {
     use HasFactory;
 
-    protected $table = 'ciudadanos';
-
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'telefono',
@@ -25,19 +18,17 @@ class Ciudadano extends Model
         'referencias_ubicacion',
     ];
 
-    /**
-     * Obtener las solicitudes de recolección de este ciudadano
-     */
+    public function ciudad()
+    {
+        return $this->belongsTo(City::class, 'ciudad_id');
+    }
+
     public function solicitudes()
     {
         return $this->hasMany(Solicitud::class, 'ciudadano_id');
     }
-
-    /**
-     * Obtener la cuenta de usuario asociada
-     */
-    public function authUser()
+    public function user()
     {
-        return $this->hasOne(AuthUser::class, 'profile_id')->where('role', 'ciudadano');
+        return $this->hasOne(AuthUser::class, 'profile_id');  // Aquí se usa AuthUser en lugar de User
     }
 }

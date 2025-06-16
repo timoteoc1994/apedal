@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use App\Events\EliminacionSolicitud;
 
 //los demas
+use Inertia\Inertia;  
 use Illuminate\Support\Facades\DB;
 use App\Models\Reciclador;
 use App\Models\Ubicacionreciladores;
@@ -33,6 +34,57 @@ class SolicitudRecoleccionController extends Controller
     {
         $this->notificationService = $notificationService;
     } */
+    public function listar(Request $request)
+    {
+        $pag = SolicitudRecoleccion::with([
+                'usuarioAuth',
+                'asociacionAuth',
+                'zona',
+                'recicladorAuth',
+            ])
+            ->orderBy('fecha', 'desc')
+            ->paginate(15);
+    
+        $pag->getCollection()->transform(function($sol) {
+            // --- 1) reemplazamos $sol->imagen por el array completo ---
+            $sol->imagenes = $sol->imagenes_urls; 
+    
+            // --- 2) usuarios disponibles (igual que antes) ---
+            $idsDisp = is_array($sol->ids_disponibles)
+                ? $sol->ids_disponibles
+                : (json_decode($sol->ids_disponibles, true) ?? []);
+            $sol->usuarios_disponibles = AuthUser::select('id','email')
+                ->whereIn('id', $idsDisp)
+                ->get();
+    
+            // --- 3) usuarios notificados ---
+            $idsNot = is_array($sol->recicladores_notificados)
+                ? $sol->recicladores_notificados
+                : (json_decode($sol->recicladores_notificados, true) ?? []);
+            $sol->usuarios_notificados = AuthUser::select('id','email')
+                ->whereIn('id', $idsNot)
+                ->get();
+    
+            // --- 4) mapeo de relaciones para la vista (igual) ---
+            $sol->user = $sol->usuarioAuth && $sol->usuarioAuth->profile
+                ? (object)['name' => $sol->usuarioAuth->profile->name]
+                : null;
+            $sol->asociacion = $sol->asociacionAuth && $sol->asociacionAuth->profile
+                ? (object)['nombre' => $sol->asociacionAuth->profile->name]
+                : null;
+            $sol->reciclador = $sol->recicladorAuth && $sol->recicladorAuth->profile
+                ? (object)['name' => $sol->recicladorAuth->profile->name]
+                : null;
+    
+            return $sol;
+        });
+    
+        return Inertia::render('Solicitudes/index', [
+            'solicitudes' => $pag,
+        ]);
+    }
+    
+
     public function obtenerDetallesRecoleccion($id)
     {
         Log::info('ID de solicitud recibido: ' . $id);

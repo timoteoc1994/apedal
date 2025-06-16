@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\SolicitudRecoleccion;
 use Illuminate\Support\Facades\Log;
 use App\Models\Ciudadano;
+use App\Models\City;             // ← importa el modelo City
+use App\Models\Asociacion;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
 use App\Events\NuevaSolicitudInmediata;
 use App\Events\EliminacionSolicitud;
 use Illuminate\Support\Facades\DB;
@@ -43,9 +48,176 @@ class RecicladorController extends Controller
             'data' => $solicitud
         ]);
     }
+
+
+    public function getAsociaciones()
+    {
+        $asociaciones = Asociacion::all(); // Obtener todas las asociaciones
+        return response()->json([
+            'success' => true,
+            'data' => $asociaciones
+        ]);
+    }
+
+    public function index(Request $request)
+    {
+        $query = Reciclador::with('asociacion');
+    
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+    
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('telefono', 'like', "%{$search}%")
+                  ->orWhere('ciudad', 'like', "%{$search}%")
+                  ->orWhere('estado', 'like', "%{$search}%");
+            });
+        }
+    
+        $recicladores = $query->paginate(10)->withQueryString();
+    
+        return Inertia::render('Reciclador/index', [
+            'recicladores' => $recicladores,
+        ]);
+    }
+    
+
+    public function createReciclador()
+    {
+        $asociaciones = Asociacion::all();
+        $ciudades     = City::all();   // ← obtén todas las ciudades
+        return Inertia::render('Reciclador/Create', [
+            'asociaciones' => $asociaciones,
+            'ciudades'     => $ciudades,
+        ]);
+    }
+
+    public function storeReciclador(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'name'          => 'required|string',
+                'telefono'      => 'required|string',
+                'ciudad'        => 'required|string',
+                'asociacion_id' => 'required|exists:asociaciones,id',
+                'email'         => 'required|email|unique:auth_users,email',
+                'password'      => 'required|string|min:8',
+                //'status'        => 'required|in:disponible,en_ruta,inactivo',
+                'estado'        => 'required|in:Activo,Inactivo',
+            ]);
+
+            // Crear el reciclador
+            $reciclador = Reciclador::create([
+                'name'          => $data['name'],
+                'telefono'      => $data['telefono'],
+                'ciudad'        => $data['ciudad'],
+                'asociacion_id' => $data['asociacion_id'],
+                'status'        => 'inactivo', 
+                'estado'        => $data['estado'],
+            ]);
+
+            // Crear el usuario asociado
+            AuthUser::create([
+                'email'      => $data['email'],
+                'password'   => Hash::make($data['password']),
+                'role'       => 'reciclador',
+                'profile_id' => $reciclador->id,
+            ]);
+
+            // Redirigir al índice con mensaje
+            return Redirect::route('reciclador.index')
+                ->with('message', 'Reciclador y usuario creados exitosamente');
+
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            // Si falló la validación, Inertia ya envía automáticamente los errores
+            throw $ve;
+        } catch (\Exception $e) {
+            // En caso de otro error, volver al formulario con mensaje genérico
+            $asociaciones = Asociacion::all();
+            return Inertia::render('Reciclador/Create', [
+                'asociaciones' => Asociacion::all(),
+                'ciudades'     => City::all(),
+                'error'        => $e->getMessage(),
+            ]);
+        }
+    }
     /**
      * Obtener todas las asignaciones del reciclador autenticado
      */
+
+
+     public function deleteReciclador($id)
+{
+    try {
+        // Buscar el reciclador por ID
+        $reciclador = Reciclador::findOrFail($id);
+
+        // Eliminar el reciclador
+        $reciclador->delete();
+
+        // Retornar respuesta de éxito
+        return response()->json([
+            'success' => true,
+            'message' => 'Reciclador eliminado exitosamente.',
+        ]);
+    } catch (\Exception $e) {
+        // En caso de error, retornar un mensaje de error
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al eliminar el reciclador: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
+public function editReciclador($id)
+{
+    // Obtener el reciclador por ID
+    $reciclador = Reciclador::findOrFail($id);
+
+    // Obtener las asociaciones y ciudades
+    $asociaciones = Asociacion::all();
+    $ciudades = City::all();
+
+    return Inertia::render('Reciclador/Edit', [
+        'reciclador' => $reciclador,
+        'asociaciones' => $asociaciones,
+        'ciudades' => $ciudades
+    ]);
+}
+
+
+public function updateReciclador(Request $request, $id)
+{
+    try {
+        // Validar los datos recibidos
+        $data = $request->validate([
+            'name' => 'required|string',
+            'telefono' => 'required|string',
+            'ciudad' => 'required|string',
+            'asociacion_id' => 'required|exists:asociaciones,id',
+            'estado' => 'required|in:Activo,Inactivo',
+        ]);
+
+        // Buscar el reciclador por ID
+        $reciclador = Reciclador::findOrFail($id);
+
+        // Actualizar los datos del reciclador
+        $reciclador->update([
+            'name' => $data['name'],
+            'telefono' => $data['telefono'],
+            'ciudad' => $data['ciudad'],
+            'asociacion_id' => $data['asociacion_id'],
+            'estado' => $data['estado'],
+        ]);
+
+        // Responder con éxito
+        return response()->json(['success' => true, 'message' => 'Reciclador actualizado con éxito']);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => 'Error al actualizar reciclador', 'error' => $e->getMessage()], 500);
+    }
+}
+
+
 
     // En un controlador como RecicladorController.php
     public function Pendientes(Request $request)

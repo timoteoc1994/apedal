@@ -34,7 +34,21 @@ const mainNavItems: NavItem[] = [
         href: route('versions.index'),
         icon: Building,
     },
-
+    {
+        title: 'Ciudadanos',
+        href: route('ciudadano.index'),
+        icon: Building,
+    },
+    {
+        title: 'Recicladores',
+        href: route('reciclador.index'),
+        icon: Building,
+    },
+    {
+        title: 'Solicitudes',
+        href: route('solicitud.listar'),
+        icon: Building,
+    },
     
 ];
 

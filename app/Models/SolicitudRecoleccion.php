@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SolicitudRecoleccion extends Model
 {
@@ -37,38 +38,53 @@ class SolicitudRecoleccion extends Model
     ];
 
     protected $casts = [
-        'fecha' => 'date',
-        'fecha_completado' => 'datetime',
-        'latitud' => 'float',
-        'longitud' => 'float',
-        'peso_total' => 'float',
-        'es_inmediata' => 'boolean',
-        'peso_total_revisado' => 'float',
+        'fecha'                => 'date',
+        'fecha_completado'     => 'datetime',
+        'latitud'              => 'float',
+        'longitud'             => 'float',
+        'peso_total'           => 'float',
+        'es_inmediata'         => 'boolean',
+        'peso_total_revisado'  => 'float',
+        'imagen' => 'array', 
     ];
 
-    // Relación con materiales
+    /**
+     * Relación al solicitante en auth_users
+     */
+    public function usuarioAuth(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\AuthUser::class, 'user_id');
+    }
+
+    /**
+     * Relación a la asociación (auth_users con role = 'asociacion')
+     */
+    public function asociacionAuth(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\AuthUser::class, 'asociacion_id');
+    }
+
+    /**
+     * Relación al reciclador (auth_users con role = 'reciclador')
+     */
+    public function recicladorAuth(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\AuthUser::class, 'reciclador_id');
+    }
+
+    /**
+     * Relación con Zona
+     */
+    public function zona(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Zona::class, 'zona_id');
+    }
+
+    /**
+     * Relación con materiales (si la necesitas)
+     */
     public function materiales()
     {
-        return $this->hasMany(Material::class, 'solicitud_id');
-    }
-
-    // Relación con el usuario (ciudadano)
-    public function authUser()
-    {
-        return $this->belongsTo(AuthUser::class, 'user_id');
-    }
-
-    // Relación con el reciclador
-    public function reciclador()
-    {
-        return $this->belongsTo(Reciclador::class, 'reciclador_id');
-    }
-
-    // En SolicitudRecoleccion.php
-    public function recicladorAsignado()
-    {
-        return $this->belongsTo(AuthUser::class, 'reciclador_id')
-            ->where('role', 'reciclador')
-            ->with('reciclador:id,name,telefono,logo_url');
+        return $this->hasMany(\App\Models\Material::class, 'solicitud_id');
     }
 }

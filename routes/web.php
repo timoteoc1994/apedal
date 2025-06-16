@@ -6,6 +6,9 @@ use Inertia\Inertia;
 use App\Http\Controllers\ViewAsociationController;
 use App\Http\Controllers\CityController;
 use App\Http\Controllers\ZonaController;
+use App\Http\Controllers\CiudadanoController; 
+use App\Http\Controllers\RecicladorController;
+use App\Http\Controllers\SolicitudRecoleccionController;
 use App\Events\EnviarMensaje;
 use App\Http\Controllers\AutoMessageController;
 use App\Http\Controllers\Prueba;
@@ -55,6 +58,43 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/versiones', [AppVersionController::class, 'index'])->name('versions.index');
     Route::put('/versiones/{appVersion}', [AppVersionController::class, 'update'])->name('versions.update');
     Route::post('/versiones', [AppVersionController::class, 'store'])->name('versions.store');
+
+    Route::get('/crear-ciudadano', [CiudadanoController::class, 'create'])->name('ciudadano.create');
+
+
+    // Ruta para procesar la creación del ciudadano y usuario
+    Route::post('/crear-ciudadano', [CiudadanoController::class, 'createCiudadano'])->name('ciudadano.create');
+
+    // Ruta para mostrar la lista de ciudadanos
+    Route::get('/ciudadanos', [CiudadanoController::class, 'index'])->name('ciudadano.index');
+// Ruta para eliminar un ciudadano
+Route::delete('/ciudadanos/{id}', [CiudadanoController::class, 'deleteCiudadano'])->name('ciudadano.delete');
+// Ruta para mostrar el formulario de edición
+// Ruta para mostrar el formulario de edición de ciudadano
+Route::get('/ciudadanos/{id}/editar', [CiudadanoController::class, 'edit'])->name('ciudadano.edit');
+
+// Ruta para procesar la actualización de ciudadano
+Route::put('/ciudadanos/{id}', [CiudadanoController::class, 'update'])->name('ciudadano.update');
+
+
+
+Route::get('/recicladores', [RecicladorController::class, 'index'])->name('reciclador.index');
+
+// Guardar el nuevo reciclador
+Route::post('/crear-reciclador', [RecicladorController::class, 'storeReciclador'])
+     ->name('reciclador.store');
+     
+Route::get('/crear-reciclador', [RecicladorController::class, 'createReciclador'])->name('reciclador.create');
+Route::delete('/recicladores/{id}', [RecicladorController::class, 'deleteReciclador'])->name('reciclador.delete');
+
+Route::get('/recicladores/{id}/editar', [RecicladorController::class, 'editReciclador'])->name('reciclador.edit');
+Route::put('/recicladores/{id}', [RecicladorController::class, 'updateReciclador'])->name('reciclador.update');
+
+
+//solicitudes
+Route::get('/solicitudes', [SolicitudRecoleccionController::class, 'listar'])
+    ->name('solicitud.listar');  
+
 });
 
 Route::get('/auto-message', [AutoMessageController::class, 'index']);
