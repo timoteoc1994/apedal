@@ -100,7 +100,7 @@ class MostrarSolicitudesController extends Controller
         foreach ($solicitudes as $solicitud) {
             $solicitud->user = AuthUser::with(['ciudadano' => function ($query) {
                 // Si también quieres filtrar campos del ciudadano
-                $query->select('id', 'name', 'logo_url');
+                $query->select('id', 'name', 'logo_url', 'telefono');
             }])
                 ->select('id', 'email', 'profile_id') // Selecciona solo los campos necesarios del usuario
                 ->find($solicitud->user_id);
@@ -416,7 +416,7 @@ class MostrarSolicitudesController extends Controller
 
             // Obtener recicladores que pertenecen a la asociación y están disponibles y activos
             $recicladores = Reciclador::where('asociacion_id', $asociacion->id)
-                ->where('status', 'disponible')
+                // ->where('status', 'disponible')
                 ->where('estado', 'Activo')
                 ->with(['authUser' => function ($query) {
                     $query->select('id', 'email', 'profile_id');
@@ -434,7 +434,8 @@ class MostrarSolicitudesController extends Controller
                         'name' => $reciclador->name,
                         'email' => $reciclador->authUser->email,
                         'phone' => $reciclador->telefono,
-                        'status' => $reciclador->status
+                        'status' => $reciclador->status,
+                        'logo_url' => $reciclador->logo_url,
                     ];
                 }
             }

@@ -999,4 +999,38 @@ class RecicladorController extends Controller
             ], 500);
         }
     }
+    public function obtenerEstadisticas(Request $request)
+    {
+        try {
+            $authUser = Auth::user();
+
+            if ($authUser->role !== 'reciclador') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Solo los recicladores pueden acceder a esta información',
+                ], 403);
+            }
+
+            // Contar solicitudes pendientes para este reciclador// Calcula las estadísticas (ejemplo)
+            $totalRecolecciones = SolicitudRecoleccion::where('reciclador_id', $authUser->id)->count();
+            $recoleccionesEsteMes = SolicitudRecoleccion::where('reciclador_id', $authUser->id)
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->count();
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'recolecciones' => $totalRecolecciones,
+                    'este_mes' => $recoleccionesEsteMes,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al obtener info de sincronización: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener información de sincronización',
+            ], 500);
+        }
+    }
 }

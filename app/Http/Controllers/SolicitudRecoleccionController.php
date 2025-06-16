@@ -471,6 +471,7 @@ class SolicitudRecoleccionController extends Controller
         $usuario = AuthUser::where('profile_id', $asociacion_id)->where('role', 'asociacion')->first();
         //imprimor usuario;
         \Log::info('El usuario es: ' . $usuario);
+        $id_de_asocacion = $usuario->id;
         // Crear la solicitud
         $solicitud = SolicitudRecoleccion::create([
             'user_id' => Auth::id(),
@@ -510,8 +511,8 @@ class SolicitudRecoleccionController extends Controller
 
         //enviar una notificacion a la asociacion que se creo una solicitud en su zona por firebase
 
-
-        FirebaseService::sendNotification($asociacion_id, [
+        Log::info('Enviando notificación a la asociación con ID: ' . $asociacion_id);
+        FirebaseService::sendNotification($id_de_asocacion, [
             'title' => 'Hay una nueva solicitud en tu zona',
             'body' => 'Un ciudadano ha creado una solicitud en tu zona',
             'data' => [

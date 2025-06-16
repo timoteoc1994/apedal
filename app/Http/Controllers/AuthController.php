@@ -266,7 +266,7 @@ class AuthController extends Controller
             $credentials = $request->validate([
                 'email' => 'required|email',
                 'password' => 'required',
-                'fcm_token' => 'nullable|string', // Añadir validación para el token FCM
+                'fcm_token' => 'required|string', // Añadir validación para el token FCM
             ]);
 
             $user = AuthUser::where('email', $credentials['email'])->first();
@@ -278,6 +278,14 @@ class AuthController extends Controller
                 ], 401);
             }
 
+            //verificar si ya existe un fcm_token eso significa que ya existe una cuenta activa y no puede iniciar sesion
+
+            if ($user->fcm_token != null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya existe una cuenta activa'
+                ], 401);
+            }
             // Actualizar el token FCM si se proporciona
             if ($request->has('fcm_token') && $request->fcm_token) {
                 $user->fcm_token = $request->fcm_token;

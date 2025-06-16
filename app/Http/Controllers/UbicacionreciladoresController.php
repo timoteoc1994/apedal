@@ -59,7 +59,7 @@ class UbicacionreciladoresController extends Controller
             'latitude' => $validated['latitude'],
             'longitude' => $validated['longitude'],
         ];
-        UbicacionActualizada::dispatch($user->id, $ubicacion);
+
         // 2. Guardar en Redis GEO para búsquedas espaciales
         if ($status === 'disponible' || $status === 'en_ruta') {
             Redis::geoadd(
@@ -72,9 +72,7 @@ class UbicacionreciladoresController extends Controller
 
         // 3. Guardar estado del reciclador
         Redis::hset("recycler:status", $user->id, $status);
-        if ($status === 'en_ruta') {
-            UbicacionActualizada::dispatch($user->id, $ubicacion);
-        }
+
 
         // 4. Si el estado es inactivo, remover de ubicaciones activas
         if ($status === 'inactivo') {
@@ -131,9 +129,7 @@ class UbicacionreciladoresController extends Controller
         ]);
     }
 
-    /**
-     * Obtener recicladores cercanos a una ubicación
-    
+
     /**
      * Calcular distancia entre dos puntos
      */

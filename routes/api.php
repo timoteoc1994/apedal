@@ -39,7 +39,7 @@ Route::get('/ciudades_disponibles', [AuthController::class, 'getCities']);
 Route::get('/asociaciones_disponibles', [AuthController::class, 'getAsociaiones']);
 
 
-
+Route::get('tracking/{id}', [TrackingController::class, 'getLocation']);
 Route::middleware('auth:sanctum')->post('/update-fcm-token', function (Request $request) {
     $request->validate([
         'fcm_token' => 'required|string',
@@ -137,9 +137,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/sincronizar-asignaciones', [RecicladorController::class, 'sincronizarAsignaciones']);
         Route::post('/solicitudes/{id}/marcar-vista', [RecicladorController::class, 'marcarSolicitudVista']);
         Route::get('/info-sincronizacion', [RecicladorController::class, 'obtenerInfoSincronizacion']);
-        // ⬆️ FIN DE LÍNEAS NUEVAS ⬆️
 
-
+        //obtener estadisticas para el perfil
+        Route::get('/estadisticas/perfil', [RecicladorController::class, 'obtenerEstadisticas']);
     });
 
 
@@ -169,9 +169,10 @@ Route::middleware('auth:sanctum')->group(function () {
         //actualizar el perfil para un reciclador
         Route::put('/recicladores/actualizar/{id}', [AsociacionController::class, 'updateReciclador']);
 
+        //obtener estadisticas para el perfil de recicaldores
+        Route::get('/reciclador_estadisticas', [AsociacionController::class, 'obtenerEstadisticas']);
+
         Route::post('/recicladores', [AuthController::class, 'registerRecycler']);
-        Route::get('/solicitudes', [AsociacionController::class, 'getSolicitudes']);
-        Route::post('/asignar', [AsociacionController::class, 'asignarSolicitud']);
     });
 });
 

@@ -8,6 +8,32 @@ use Carbon\Carbon;
 
 class TrackingController extends Controller
 {
+    public function getLocation($id)
+    {
+        $locationRaw = Redis::get("recycler:location:$id");
+
+        if (!$locationRaw) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró ubicación para este reciclador.'
+            ]);
+        }
+
+        $location = json_decode($locationRaw, true);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'location' => [
+                    'latitude'    => $location['latitude'],
+                    'longitude'   => $location['longitude'],
+                    'last_update' => Carbon::parse($location['timestamp'])->diffForHumans(),
+                ],
+                'status' => $location['status'] ?? 'desconocido'
+            ]
+        ]);
+    }
+
     public function show($id = 3)
     {
         return Inertia::render('Tracking/Show', [
@@ -36,7 +62,7 @@ class TrackingController extends Controller
                     'latitude' => $location['latitude'],
                     'longitude' => $location['longitude'],
                     'timestamp' => $location['timestamp'],
-                    'last_update' => Carbon::parse($location['updated_at'])->diffForHumans(),
+                    'last_update' => Carbon::parse($location['timestamp'])->diffForHumans(),
                 ],
                 'status' => $status ?? 'desconocido',
                 'user_id' => $id
