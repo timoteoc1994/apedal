@@ -21,15 +21,20 @@ class CiudadanoController extends Controller
      * Muestra el listado de ciudadanos
      */
     // En el controlador CiudadanoController.php
-    public function index()
+    public function index(Request $request)
     {
-        $ciudadanos = Ciudadano::all();  // Obtener todos los ciudadanos
-
-        return Inertia::render('Ciudadano/index', [
-            'ciudadanos' => $ciudadanos  // Pasar los ciudadanos a la vista
-        ]);
+        $query = Ciudadano::query();
+    
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where('name', 'LIKE', '%' . $search . '%');
+        }
+    
+        $ciudadanos = $query->paginate(10)->withQueryString(); // Importante para mantener query params
+    
+        return Inertia::render('Ciudadano/index', ['ciudadanos' => $ciudadanos]);
     }
-
+    
 
     /**
      * Muestra el formulario de creación

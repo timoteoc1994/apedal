@@ -59,15 +59,28 @@ class RecicladorController extends Controller
         ]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $recicladores = Reciclador::with('asociacion')->get();
+        $query = Reciclador::with('asociacion');
+    
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+    
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('telefono', 'like', "%{$search}%")
+                  ->orWhere('ciudad', 'like', "%{$search}%")
+                  ->orWhere('estado', 'like', "%{$search}%");
+            });
+        }
+    
+        $recicladores = $query->paginate(10)->withQueryString();
     
         return Inertia::render('Reciclador/index', [
             'recicladores' => $recicladores,
         ]);
     }
-
+    
 
     public function createReciclador()
     {
