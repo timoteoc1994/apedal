@@ -44,6 +44,11 @@ const mainNavItems: NavItem[] = [
         href: route('reciclador.index'),
         icon: Building,
     },
+    {
+        title: 'Solicitudes',
+        href: route('solicitud.listar'),
+        icon: Building,
+    },
     
 ];
 

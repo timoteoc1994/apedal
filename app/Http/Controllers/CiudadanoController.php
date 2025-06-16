@@ -7,6 +7,7 @@ use App\Models\Ciudadano;
 use App\Models\Asociacion;
 use App\Models\City;
 use App\Models\User;
+use Illuminate\Support\Facades\Redirect;  // ← importa el facade
 use App\Models\AuthUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -78,7 +79,6 @@ class CiudadanoController extends Controller
         ]);
 
         // Redirigir con mensaje de éxito
-         // Redirigir al índice con mensaje
          return Redirect::route('ciudadano.index')
          ->with('message', 'Ciudadano y usuario creados exitosamente');
     } catch (ValidationException $e) {

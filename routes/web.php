@@ -8,6 +8,7 @@ use App\Http\Controllers\CityController;
 use App\Http\Controllers\ZonaController;
 use App\Http\Controllers\CiudadanoController; 
 use App\Http\Controllers\RecicladorController;
+use App\Http\Controllers\SolicitudRecoleccionController;
 use App\Events\EnviarMensaje;
 use App\Http\Controllers\AutoMessageController;
 use App\Http\Controllers\Prueba;
@@ -89,6 +90,10 @@ Route::delete('/recicladores/{id}', [RecicladorController::class, 'deleteRecicla
 Route::get('/recicladores/{id}/editar', [RecicladorController::class, 'editReciclador'])->name('reciclador.edit');
 Route::put('/recicladores/{id}', [RecicladorController::class, 'updateReciclador'])->name('reciclador.update');
 
+
+//solicitudes
+Route::get('/solicitudes', [SolicitudRecoleccionController::class, 'listar'])
+    ->name('solicitud.listar');  
 
 });
 
