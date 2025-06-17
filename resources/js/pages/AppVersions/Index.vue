@@ -66,7 +66,7 @@ const platformsExist = computed(() =>
     <Head title="Versiones de la App" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="p-6 bg-white dark:bg-gray-900 shadow rounded-lg">
+        <div class="p-6 m-4 bg-white dark:bg-gray-900 shadow rounded-lg">
             <h1 class="text-2xl font-bold mb-4">Versiones de la App</h1>
 
             <div class="mb-4 flex gap-2">

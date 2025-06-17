@@ -2,6 +2,11 @@
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
+import IconDashboard from '@/components/icons/IconDashboard.vue';
+import IconSolicitudes from '@/components/icons/IconSolicitudes.vue';
+import IconAsociaciones from '@/components/icons/IconAsociaciones.vue';
+import IconCiudadanos from '@/components/icons/IconCiudadanos.vue';
+import IconMapa from '@/components/icons/IconMapa.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
@@ -12,12 +17,12 @@ const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: route('dashboard'),
-        icon: LayoutGrid,
+        icon: IconDashboard,
     },
     {
         title: 'Asociaciones',
         href: route('asociation.index'),
-        icon: Users,
+        icon: IconAsociaciones,
     },
     {
         title: 'Ciudades',
@@ -27,7 +32,7 @@ const mainNavItems: NavItem[] = [
     {
         title: 'Mapa',
         href: route('zonas.mapa'),
-        icon: Building,
+        icon: IconMapa,
     },
     {
         title: 'Version',
@@ -37,7 +42,7 @@ const mainNavItems: NavItem[] = [
     {
         title: 'Ciudadanos',
         href: route('ciudadano.index'),
-        icon: Building,
+        icon: IconCiudadanos,
     },
     {
         title: 'Recicladores',
