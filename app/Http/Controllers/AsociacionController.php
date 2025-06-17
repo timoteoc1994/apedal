@@ -80,7 +80,6 @@ class AsociacionController extends Controller
                 'phone' => 'sometimes|string|max:20',
                 'estado' => 'required|string',
                 'password' => [
-                    'required',
                     'string',
                     'min:8',
                     'confirmed',
