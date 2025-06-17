@@ -85,4 +85,12 @@ class AuthUser extends Authenticatable
                 return null;
         }
     }
+
+    /**
+     * Mutador para guardar el email siempre en minúsculas
+     */
+    public function setEmailAttribute($value)
+    {
+        $this->attributes['email'] = strtolower($value);
+    }
 }

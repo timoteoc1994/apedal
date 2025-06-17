@@ -155,9 +155,12 @@ class AsociacionController extends Controller
     }
     public function getRecicladores(Request $request)
     {
+        
         try {
             $user = $request->user();
             $asociacion = Asociacion::find($user->profile_id);
+            Log::info('esta es la id '.$asociacion->id);
+            
 
             // Parámetros de paginación
             $perPage = $request->query('per_page', 10);
@@ -167,7 +170,7 @@ class AsociacionController extends Controller
             $busqueda = $request->query('busqueda', '');
 
             // Query base
-            $query = Reciclador::where('asociacion_id', $asociacion->id)->where('is_new', 'false');
+            $query = Reciclador::where('asociacion_id', $asociacion->id)->where('is_new', false);
 
             // Aplicar filtro de búsqueda si existe
             if (!empty($busqueda)) {

@@ -24,6 +24,7 @@ class MostrarSolicitudesController extends Controller
         // Obtener la asociación autenticada
         $asociacion = Auth::user();
 
+
         // Verificar que el usuario es una asociación
         if (!$asociacion || $asociacion->role !== 'asociacion') {
             return response()->json([
@@ -32,7 +33,7 @@ class MostrarSolicitudesController extends Controller
         }
 
         // Contar recicladores asociados a esta asociación
-        $recicladoresCount = Reciclador::where('asociacion_id', $asociacion->id)->count();
+        $recicladoresCount = Reciclador::where('asociacion_id', $asociacion->profile_id)->count();
 
         // Contar solicitudes pendientes para esta asociación
         $solicitudesCount = SolicitudRecoleccion::where('asociacion_id', $asociacion->id)

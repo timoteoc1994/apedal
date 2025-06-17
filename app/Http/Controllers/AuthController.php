@@ -287,21 +287,16 @@ class AuthController extends Controller
             }
 
             //verificar si ya existe un fcm_token eso significa que ya existe una cuenta activa y no puede iniciar sesion
-
             if ($user->fcm_token != null) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Ya existe una cuenta activa'
                 ], 401);
             }
-            // Actualizar el token FCM si se proporciona
-            if ($request->has('fcm_token') && $request->fcm_token) {
-                $user->fcm_token = $request->fcm_token;
-                $user->save();
-            }
 
             // Obtener datos específicos del perfil
             $profileData = null;
+            $puedeAsignarFcm = false;
             if ($user->role === 'ciudadano') {
                 //verificar si $user->email_verified_at es null
                 if ($user->email_verified_at == null) {
@@ -311,6 +306,7 @@ class AuthController extends Controller
                     ], 401);
                 }
                 $profileData = Ciudadano::find($user->profile_id);
+                $puedeAsignarFcm = true; // Solo si está verificado
             } elseif ($user->role === 'reciclador') {
                 $profileData = Reciclador::with('asociacion:id,name')->find($user->profile_id);
                 // Verificar si la cuenta está habilitada
@@ -320,6 +316,7 @@ class AuthController extends Controller
                         'message' => 'La cuenta del reciclador aún no ha sido habilitada'
                     ], 403);
                 }
+                $puedeAsignarFcm = true; // Solo si está activo
             } elseif ($user->role === 'asociacion') {
                 $profileData = Asociacion::find($user->profile_id);
                 // Verificar si la cuenta está habilitada
@@ -329,6 +326,13 @@ class AuthController extends Controller
                         'message' => 'La cuenta de la asociación aún no ha sido habilitada'
                     ], 403);
                 }
+                $puedeAsignarFcm = true; // Solo si está verificada
+            }
+
+            // Asignar el token FCM solo si la cuenta está habilitada/verificada
+            if ($puedeAsignarFcm && $request->has('fcm_token') && $request->fcm_token) {
+                $user->fcm_token = $request->fcm_token;
+                $user->save();
             }
 
             // Generar token
