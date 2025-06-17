@@ -43,7 +43,7 @@ class SolicitudRecoleccionController extends Controller
                 'recicladorAuth',
             ])
             ->orderBy('fecha', 'desc')
-            ->paginate(15);
+            ->paginate(10);
     
         $pag->getCollection()->transform(function($sol) {
             // --- 1) reemplazamos $sol->imagen por el array completo ---

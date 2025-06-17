@@ -32,10 +32,10 @@
     <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
     {{-- Precarga de fuentes para evitar re-render de texto --}}
-    <link rel="preload" href="/fonts/SF-Pro-Display-Regular.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/fonts/SF-Pro-Display-Medium.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/fonts/SF-Pro-Display-Semibold.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/fonts/SF-Pro-Display-Bold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/SF-Pro-Display-Regular.otf" as="font" type="font/otf" crossorigin>
+    <link rel="preload" href="/fonts/SF-Pro-Display-Medium.otf" as="font" type="font/otf" crossorigin>
+    <link rel="preload" href="/fonts/SF-Pro-Display-Semibold.otf" as="font" type="font/otf" crossorigin>
+    <link rel="preload" href="/fonts/SF-Pro-Display-Bold.otf" as="font" type="font/otf" crossorigin>
 
     {{-- Solo si mantienes fuentes externas, como fallback --}}
     <link rel="preconnect" href="https://fonts.bunny.net">
