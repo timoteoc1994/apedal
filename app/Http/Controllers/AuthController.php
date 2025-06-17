@@ -556,12 +556,33 @@ class AuthController extends Controller
         }
 
         if ($user->email_verification_code == $request->code) {
-            $user->email_verified_at = now();
-            $user->email_verification_code = null;
-            $user->save();
+    $user->email_verified_at = now();
+    $user->email_verification_code = null;
+    $user->save();
 
-            return response()->json(['success' => true, 'message' => 'Correo verificado correctamente']);
-        } else {
+    // Generar token de acceso
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    // Obtener datos específicos del perfil
+    $profileData = null;
+    if ($user->role === 'ciudadano') {
+        $profileData = Ciudadano::find($user->profile_id);
+    } elseif ($user->role === 'reciclador') {
+        $profileData = Reciclador::with('asociacion:id,name')->find($user->profile_id);
+    } elseif ($user->role === 'asociacion') {
+        $profileData = Asociacion::find($user->profile_id);
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Correo verificado correctamente',
+        'data' => [
+            'user' => $user,
+            'profile' => $profileData,
+            'token' => $token
+        ]
+    ]);
+} else {
             return response()->json(['success' => false, 'message' => 'Código incorrecto'], 400);
         }
     } catch (\Illuminate\Validation\ValidationException $e) {
