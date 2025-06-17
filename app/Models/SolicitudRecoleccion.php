@@ -52,23 +52,61 @@ class SolicitudRecoleccion extends Model
         return $this->hasMany(Material::class, 'solicitud_id');
     }
 
-    // Relación con el usuario (ciudadano)
+    // Relación original con usuario (ciudadano)
     public function authUser()
     {
         return $this->belongsTo(AuthUser::class, 'user_id');
     }
 
-    // Relación con el reciclador
+    // Relación original con reciclador
     public function reciclador()
     {
         return $this->belongsTo(Reciclador::class, 'reciclador_id');
     }
 
-    // En SolicitudRecoleccion.php
+    // Relación extendida con recicladorAuth (usado en la vista)
+    public function recicladorAuth()
+    {
+        return $this->belongsTo(AuthUser::class, 'reciclador_id');
+    }
+
+    // Relación extendida con usuarioAuth (usado en la vista)
+    public function usuarioAuth()
+    {
+        return $this->belongsTo(AuthUser::class, 'user_id');
+    }
+
+    // Relación extendida con asociacionAuth (usado en la vista)
+    public function asociacionAuth()
+    {
+        return $this->belongsTo(AuthUser::class, 'asociacion_id');
+    }
+
+    // Relación con zona
+    public function zona()
+    {
+        return $this->belongsTo(Zona::class, 'zona_id');
+    }
+
+    // Relación adicional ya existente (no se modifica)
     public function recicladorAsignado()
     {
         return $this->belongsTo(AuthUser::class, 'reciclador_id')
             ->where('role', 'reciclador')
             ->with('reciclador:id,name,telefono,logo_url');
+    }
+
+    // Accesor de imágenes (si usas campo `imagen` con JSON)
+    public function getImagenesUrlsAttribute()
+    {
+        $imagenes = is_array($this->imagen)
+            ? $this->imagen
+            : json_decode($this->imagen, true);
+
+        if (!is_array($imagenes)) return [];
+
+        return array_map(function ($img) {
+            return asset('storage/' . $img);
+        }, $imagenes);
     }
 }
