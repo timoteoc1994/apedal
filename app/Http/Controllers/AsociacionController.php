@@ -19,6 +19,58 @@ class AsociacionController extends Controller
     /**
      * Obtener todos los recicladores de la asociación autenticada
      */
+   public function activarcuentaReciclador(Request $request, $id)
+{
+    Log::info('Activando cuenta de reciclador con ID: ' . $id);
+    try {
+        $reciclador = Reciclador::find($id);
+        if (!$reciclador) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Reciclador no encontrado'
+            ], 404);
+        }
+        if ($reciclador->asociacion_id !== $request->user()->profile_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes permiso para activar este reciclador'
+            ]);
+        }
+
+        $reciclador->is_new = false;
+        $reciclador->estado = 'Activo';
+        $reciclador->save();
+        Log::info('Reciclador activado: ' . $reciclador->name);
+
+        //enviar correo de bienvenida al reciclador
+        $auth_user = AuthUser::where('profile_id', $reciclador->id)
+            ->where('role', 'reciclador')
+            ->first();
+        
+        if ($auth_user && $auth_user->email) {
+            \Illuminate\Support\Facades\Mail::raw(
+            "¡Bienvenido a la aplicación Adri!\n\nTu cuenta ha sido activada correctamente. Ahora puedes iniciar sesión y comenzar a usar la plataforma.\n\nSaludos,\nEquipo Adri",
+            function ($message) use ($auth_user) {
+                $message->to($auth_user->email)
+                ->subject('¡Tu cuenta ha sido activada en Adri!');
+            }
+            );
+        }
+   
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cuenta de reciclador activada correctamente',
+            'data' => $reciclador
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al activar reciclador',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
     public function updateReciclador(Request $request, $id)
     {
         Log::warning($request->all());
@@ -27,9 +79,17 @@ class AsociacionController extends Controller
                 'name' => 'sometimes|string|max:255',
                 'phone' => 'sometimes|string|max:20',
                 'estado' => 'required|string',
-                'password' => 'sometimes|string|min:8|confirmed',
+                'password' => [
+                    'required',
+                    'string',
+                    'min:8',
+                    'confirmed',
+                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'
+                ],
                 'password_confirmation' => 'sometimes|string|min:8',
                 'email' => 'sometimes|string|email|max:255',
+            ], [
+                'password.regex' => 'La contraseña debe tener al menos una mayúscula, una minúscula, un número y un carácter especial.'
             ]);
 
             $reciclador = Reciclador::find($id);

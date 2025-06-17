@@ -15,8 +15,7 @@ use Illuminate\Support\Facades\DB;
 use App\Services\FirebaseService;
 use Kreait\Firebase\Messaging\CloudMessage;
 use App\Events\EliminacionSolicitud;
-
-
+use Illuminate\Support\Facades\Mail;
 
 class MostrarSolicitudesController extends Controller
 {
@@ -137,9 +136,17 @@ class MostrarSolicitudesController extends Controller
             // Validar datos comunes
             $common = $request->validate([
                 'email' => 'required|email|unique:auth_users,email',
-                'password' => 'required|min:8|confirmed',
+                'password' => [
+                    'required',
+                    'string',
+                    'min:8',
+                    'confirmed',
+                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'
+                ],
                 'role' => 'required|in:ciudadano,reciclador,asociacion',
                 'fcm_token' => 'nullable|string', // Añadir validación para token FCM
+            ], [
+                'password.regex' => 'La contraseña debe tener al menos una mayúscula, una minúscula, un número y un carácter especial.'
             ]);
 
             // Validar datos específicos según el rol
@@ -176,6 +183,20 @@ class MostrarSolicitudesController extends Controller
             }
 
             $user = AuthUser::create($userData);
+
+            //Enviar credenciales al correo electrónico
+            Mail::raw(
+                "¡Bienvenido a Adri!\n\n" .
+                "Ahora formas parte de nuestra comunidad y puedes contribuir activamente al cuidado del medio ambiente realizando recolecciones responsables.\n\n" .
+                "Tus credenciales de acceso son:\n" .
+                "Email: {$user->email}\n" .
+                "Contraseña: {$common['password']}\n\n" .
+                "¡Gracias por sumarte a este esfuerzo ecológico!",
+                function ($message) use ($user) {
+                    $message->to($user->email)->subject('Bienvenida a Adri');
+                }
+            );
+             
 
             // Generar token si se usa Sanctum
             $token = $user->createToken('auth_token')->plainTextToken;

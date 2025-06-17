@@ -157,9 +157,17 @@ class AuthController extends Controller
             // Validar datos comunes
             $common = $request->validate([
                 'email' => 'required|email|unique:auth_users,email',
-                'password' => 'required|min:8|confirmed',
+                'password' => [
+                    'required',
+                    'string',
+                    'min:8',
+                    'confirmed',
+                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'
+                ],
                 'role' => 'required|in:ciudadano,reciclador,asociacion',
                 'fcm_token' => 'nullable|string', // Añadir validación para token FCM
+            ], [
+                'password.regex' => 'La contraseña debe tener al menos una mayúscula, una minúscula, un número y un carácter especial.'
             ]);
 
             // Validar datos específicos según el rol
@@ -530,8 +538,9 @@ class AuthController extends Controller
         }
     }
 
-    public function verificarEmail(Request $request)
-    {
+   public function verificarEmail(Request $request)
+{
+    try {
         $request->validate([
             'email' => 'required|email',
             'code' => 'required'
@@ -555,7 +564,21 @@ class AuthController extends Controller
         } else {
             return response()->json(['success' => false, 'message' => 'Código incorrecto'], 400);
         }
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Errores de validación',
+            'errors' => $e->errors(),
+        ], 422);
+    } catch (\Exception $e) {
+        Log::error('Error en verificarEmail: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Ocurrió un error al verificar el correo.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
     public function reenviarCodigo(Request $request)
     {
         $request->validate([

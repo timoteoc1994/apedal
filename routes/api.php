@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Route;
 
 
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CiudadanoController;
 use App\Http\Controllers\RecicladorController;
 use App\Http\Controllers\AsociacionController;
 use App\Http\Controllers\SolicitudRecoleccionController;
@@ -21,6 +20,7 @@ use App\Http\Controllers\MapaAsocicacion;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\MensajeController;
 use App\Models\AppVersion;
+use App\Http\Controllers\FormulariMensualController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -168,9 +168,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
         //actualizar el perfil para un reciclador
         Route::put('/recicladores/actualizar/{id}', [AsociacionController::class, 'updateReciclador']);
+        //activar cuenta del reciclador
+        Route::put('/recicladores/activarcuenta/{id}', [AsociacionController::class, 'activarcuentaReciclador']);
 
         //obtener estadisticas para el perfil de recicaldores
         Route::get('/reciclador_estadisticas', [AsociacionController::class, 'obtenerEstadisticas']);
+
+        //registrar formulario mensual
+         Route::get('/formulario-mensual/index', [FormulariMensualController::class, 'index']);
+        Route::post('/formulario-mensual', [FormulariMensualController::class, 'store']);
+        Route::put('/formulario-mensual/{id}', [FormulariMensualController::class, 'update']);
+        Route::get('/formulario-mensual/{id}', [FormulariMensualController::class, 'show']);
+        Route::delete('/formulario-mensual/{id}', [FormulariMensualController::class, 'destroy']);
 
         Route::post('/recicladores', [AuthController::class, 'registerRecycler']);
     });
