@@ -49,94 +49,106 @@ class FormulariMensualController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
-        Log::info('Los datos que vienen del formulario son: ', $request->all());
+     public function store(Request $request)
+{
+    Log::info('Los datos que vienen del formulario son: ', $request->all());
 
+    try {
+        Log::info('FormulariMensualController@store');
+        $validated = $request->validate([
+            'mes' => 'required|string',
+            'anio' => 'required|string',
+            'lugar' => 'required|string',
+            'num_recicladores' => 'required|integer',
+            'total_kilos' => 'required|numeric',
+            'total_monto' => 'required|numeric',
+            // Materiales (kilos y precios)
+            'carton_kilos' => 'nullable|numeric',
+            'carton_precio' => 'nullable|numeric',
+            'duplex_cubeta_kilos' => 'nullable|numeric',
+            'duplex_cubeta_precio' => 'nullable|numeric',
+            'papel_comercio_kilos' => 'nullable|numeric',
+            'papel_comercio_precio' => 'nullable|numeric',
+            'papel_bond_kilos' => 'nullable|numeric',
+            'papel_bond_precio' => 'nullable|numeric',
+            'papel_mixto_kilos' => 'nullable|numeric',
+            'papel_mixto_precio' => 'nullable|numeric',
+            'papel_multicolor_kilos' => 'nullable|numeric',
+            'papel_multicolor_precio' => 'nullable|numeric',
+            'tetrapak_kilos' => 'nullable|numeric',
+            'tetrapak_precio' => 'nullable|numeric',
+            'plastico_soplado_kilos' => 'nullable|numeric',
+            'plastico_soplado_precio' => 'nullable|numeric',
+            'plastico_duro_kilos' => 'nullable|numeric',
+            'plastico_duro_precio' => 'nullable|numeric',
+            'plastico_fino_kilos' => 'nullable|numeric',
+            'plastico_fino_precio' => 'nullable|numeric',
+            'pet_kilos' => 'nullable|numeric',
+            'pet_precio' => 'nullable|numeric',
+            'vidrio_kilos' => 'nullable|numeric',
+            'vidrio_precio' => 'nullable|numeric',
+            'chatarra_kilos' => 'nullable|numeric',
+            'chatarra_precio' => 'nullable|numeric',
+            'bronce_kilos' => 'nullable|numeric',
+            'bronce_precio' => 'nullable|numeric',
+            'cobre_kilos' => 'nullable|numeric',
+            'cobre_precio' => 'nullable|numeric',
+            'aluminio_kilos' => 'nullable|numeric',
+            'aluminio_precio' => 'nullable|numeric',
+            'pvc_kilos' => 'nullable|numeric',
+            'pvc_precio' => 'nullable|numeric',
+            'baterias_kilos' => 'nullable|numeric',
+            'baterias_precio' => 'nullable|numeric',
+            'lona_kilos' => 'nullable|numeric',
+            'lona_precio' => 'nullable|numeric',
+            'caucho_kilos' => 'nullable|numeric',
+            'caucho_precio' => 'nullable|numeric',
+            'fomix_kilos' => 'nullable|numeric',
+            'fomix_precio' => 'nullable|numeric',
+            'polipropileno_kilos' => 'nullable|numeric',
+            'polipropileno_precio' => 'nullable|numeric',
+        ]);
+        Log::info('paso el validador');
+        $user = Auth::user();
+        $validated['user_id'] = $user->id;
+        $validated['asociacion_id'] = $user->profile_id;
 
-        try {
-            Log::info('FormulariMensualController@store');
-            $validated = $request->validate([
-                'mes' => 'required|string',
-                'anio' => 'required|string',
-                'lugar' => 'required|string',
-                'num_recicladores' => 'required|integer',
-                'total_kilos' => 'required|numeric',
-                'total_monto' => 'required|numeric',
-                // Materiales (kilos y precios)
-                'carton_kilos' => 'nullable|numeric',
-                'carton_precio' => 'nullable|numeric',
-                'duplex_cubeta_kilos' => 'nullable|numeric',
-                'duplex_cubeta_precio' => 'nullable|numeric',
-                'papel_comercio_kilos' => 'nullable|numeric',
-                'papel_comercio_precio' => 'nullable|numeric',
-                'papel_bond_kilos' => 'nullable|numeric',
-                'papel_bond_precio' => 'nullable|numeric',
-                'papel_mixto_kilos' => 'nullable|numeric',
-                'papel_mixto_precio' => 'nullable|numeric',
-                'papel_multicolor_kilos' => 'nullable|numeric',
-                'papel_multicolor_precio' => 'nullable|numeric',
-                'tetrapak_kilos' => 'nullable|numeric',
-                'tetrapak_precio' => 'nullable|numeric',
-                'plastico_soplado_kilos' => 'nullable|numeric',
-                'plastico_soplado_precio' => 'nullable|numeric',
-                'plastico_duro_kilos' => 'nullable|numeric',
-                'plastico_duro_precio' => 'nullable|numeric',
-                'plastico_fino_kilos' => 'nullable|numeric',
-                'plastico_fino_precio' => 'nullable|numeric',
-                'pet_kilos' => 'nullable|numeric',
-                'pet_precio' => 'nullable|numeric',
-                'vidrio_kilos' => 'nullable|numeric',
-                'vidrio_precio' => 'nullable|numeric',
-                'chatarra_kilos' => 'nullable|numeric',
-                'chatarra_precio' => 'nullable|numeric',
-                'bronce_kilos' => 'nullable|numeric',
-                'bronce_precio' => 'nullable|numeric',
-                'cobre_kilos' => 'nullable|numeric',
-                'cobre_precio' => 'nullable|numeric',
-                'aluminio_kilos' => 'nullable|numeric',
-                'aluminio_precio' => 'nullable|numeric',
-                'pvc_kilos' => 'nullable|numeric',
-                'pvc_precio' => 'nullable|numeric',
-                'baterias_kilos' => 'nullable|numeric',
-                'baterias_precio' => 'nullable|numeric',
-                'lona_kilos' => 'nullable|numeric',
-                'lona_precio' => 'nullable|numeric',
-                'caucho_kilos' => 'nullable|numeric',
-                'caucho_precio' => 'nullable|numeric',
-                'fomix_kilos' => 'nullable|numeric',
-                'fomix_precio' => 'nullable|numeric',
-                'polipropileno_kilos' => 'nullable|numeric',
-                'polipropileno_precio' => 'nullable|numeric',
-            ]);
-            Log::info('paso el validador');
-            $user = Auth::user();
-            //anadir el user_id al validated
-            $validated['user_id'] = $user->id;
-            $validated['asociacion_id'] = $user->profile_id;
-
-            $formulario = FormulariMensual::create($validated);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Formulario mensual guardado correctamente',
-                'data' => $formulario
-            ]);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Errores de validación',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('Error en FormulariMensualController@store: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Ocurrió un error al guardar el formulario mensual.',
-                'error' => $e->getMessage(),
-            ], 500);
+        // Manejo de archivos adjuntos
+        $nombresArchivos = [];
+        if ($request->hasFile('archivos_adjuntos')) {
+            foreach ($request->file('archivos_adjuntos') as $index => $archivo) {
+                if ($archivo) {
+                    $nombreUnico = time() . '_' . $index . '_' . uniqid() . '.' . $archivo->getClientOriginalExtension();
+                    // Guarda en storage/app/public/FormularioAdjuntos
+                    $ruta = $archivo->storeAs('FormularioAdjuntos', $nombreUnico, 'public');
+                    $nombresArchivos[] = $ruta; // Guarda la ruta relativa
+                }
+            }
         }
+        $validated['archivos_adjuntos'] = json_encode($nombresArchivos);
+
+        $formulario = FormulariMensual::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Formulario mensual guardado correctamente',
+            'data' => $formulario
+        ]);
+    } catch (ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Errores de validación',
+            'errors' => $e->errors(),
+        ], 422);
+    } catch (\Exception $e) {
+        Log::error('Error en FormulariMensualController@store: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Ocurrió un error al guardar el formulario mensual.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
     /**
      * Display the specified resource.
      */
@@ -163,6 +175,9 @@ class FormulariMensualController extends Controller
    public function update(Request $request, $id)
 {
     $formulario = FormulariMensual::findOrFail($id);
+    Log::info('Los datos que vienen del formulario son: ', $request->except(['archivos_adjuntos']));
+    Log::info('Archivos a eliminar:', $request->input('archivos_a_eliminar', []));
+    Log::info('Archivos subidos:', $request->file('archivos_adjuntos', []));
 
     $validated = $request->validate([
         'mes' => 'sometimes|string',
@@ -217,6 +232,39 @@ class FormulariMensualController extends Controller
         'polipropileno_precio' => 'sometimes|nullable|numeric',
     ]);
 
+      // 1. Obtener los archivos actuales
+    $archivosActuales = json_decode($formulario->archivos_adjuntos ?? '[]', true);
+
+    // 2. Eliminar archivos seleccionados
+    $archivosAEliminar = $request->input('archivos_a_eliminar', []);
+    foreach ($archivosAEliminar as $archivo) {
+        $rutaCompleta = public_path('storage/' . $archivo);
+        if (file_exists($rutaCompleta)) {
+            unlink($rutaCompleta);
+        }
+        // Eliminar del array de archivos actuales
+        $archivosActuales = array_filter($archivosActuales, function ($item) use ($archivo) {
+            return $item !== $archivo;
+        });
+    }
+
+    // 3. Agregar archivos nuevos
+    $nuevosArchivos = [];
+    if ($request->hasFile('archivos_adjuntos')) {
+        foreach ($request->file('archivos_adjuntos') as $index => $archivo) {
+            if ($archivo) {
+                $nombreUnico = time() . '_' . $index . '_' . uniqid() . '.' . $archivo->getClientOriginalExtension();
+                $ruta = $archivo->storeAs('FormularioAdjuntos', $nombreUnico, 'public');
+                $nuevosArchivos[] = $ruta;
+            }
+        }
+    }
+
+    // 4. Fusionar archivos restantes + nuevos
+    $archivosFinales = array_values(array_merge($archivosActuales, $nuevosArchivos));
+    $validated['archivos_adjuntos'] = json_encode($archivosFinales);
+
+    // 5. Actualizar el formulario
     $formulario->update($validated);
 
     return response()->json([

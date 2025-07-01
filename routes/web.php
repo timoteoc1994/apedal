@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Redis;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\AppVersionController;
+use App\Http\Controllers\PuntosController;
+
 // Ruta para autenticación de canales (debe estar en web.php, no en api.php)
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
@@ -60,6 +62,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/versiones', [AppVersionController::class, 'store'])->name('versions.store');
 
     Route::get('/crear-ciudadano', [CiudadanoController::class, 'create'])->name('ciudadano.create');
+
+    //rutas puntos
+    Route::get('/puntos', [PuntosController::class, 'edit'])->name('puntos.edit');
+Route::put('/puntos', [PuntosController::class, 'update'])->name('puntos.update');
+Route::post('/puntos', [PuntosController::class, 'store'])->name('puntos.store');
 
 
     // Ruta para procesar la creación del ciudadano y usuario

@@ -39,7 +39,6 @@ const form = useForm({
     city: props.asociation.asociacion.city,
     estado: props.asociation.asociacion.verified ? 1 : 0, // Convertir a número
     color: props.asociation.asociacion.color,
-    direccion: props.asociation.asociacion.direccion,
     descripcion: props.asociation.asociacion.descripcion,
 });
 
@@ -77,18 +76,6 @@ const submit = () => {
                         <InputError class="mt-2" :message="form.errors.email" />
                     </div>
 
-                    <div class="grid gap-2">
-                        <Label for="direccion">Dirección</Label>
-                        <Input
-                            id="direccion"
-                            type="text"
-                            class="mt-1 block w-full"
-                            v-model="form.direccion"
-                            autocomplete="direccion"
-                            placeholder="Dirección"
-                        />
-                        <InputError class="mt-2" :message="form.errors.direccion" />
-                    </div>
                     <div class="grid gap-2">
                         <Label for="descripcion">Descripción</Label>
                         <Input

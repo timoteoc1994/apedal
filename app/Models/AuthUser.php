@@ -26,6 +26,7 @@ class AuthUser extends Authenticatable
         'profile_id',
         'fcm_token',
         'email_verification_code',
+        'puntos', // Añadir puntos al modelo
     ];
 
     /**
@@ -93,4 +94,5 @@ class AuthUser extends Authenticatable
     {
         $this->attributes['email'] = strtolower($value);
     }
+
 }

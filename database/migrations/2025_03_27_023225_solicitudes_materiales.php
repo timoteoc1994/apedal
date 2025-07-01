@@ -27,6 +27,7 @@ return new class extends Migration
             $table->double('longitud', 10, 7);
             $table->decimal('peso_total', 8, 2);
             $table->string('imagen')->nullable();
+            $table->string('foto_ubicacion')->nullable();
             $table->enum('estado', ['pendiente', 'asignado', 'en_camino', 'completado', 'cancelado', 'buscando_reciclador', 'agendada'])->default('pendiente');
             $table->dateTime('fecha_completado')->nullable();
             $table->text('comentarios')->nullable();
@@ -34,7 +35,9 @@ return new class extends Migration
             $table->boolean('es_inmediata')->default(false);
             //calificaciones
             $table->integer('calificacion_reciclador')->nullable();
+            $table->string('comentario_reciclador')->nullable();
             $table->integer('calificacion_ciudadano')->nullable();
+            $table->string('comentario_ciudadano')->nullable();
             $table->decimal('peso_total_revisado', 8, 2)->nullable();
             $table->timestamps();
         });

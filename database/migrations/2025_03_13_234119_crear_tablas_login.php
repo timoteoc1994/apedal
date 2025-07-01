@@ -23,11 +23,13 @@ return new class extends Migration
         Schema::create('ciudadanos', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('nickname');
             $table->string('telefono')->nullable();
             $table->string('direccion');
             $table->string('ciudad');
             $table->text('referencias_ubicacion')->nullable();
             $table->string('logo_url')->nullable();
+
             $table->timestamps();
         });
 
@@ -42,6 +44,11 @@ return new class extends Migration
             $table->string('logo_url')->nullable();
             $table->boolean('verified')->default(false);
             $table->string('color')->default('#0000FF');
+            $table->string('imagen_referencial')->nullable();
+            $table->json('dias_atencion')->nullable();
+            $table->string('hora_apertura')->nullable();
+            $table->string('hora_cierre')->nullable();
+            $table->json('materiales_aceptados')->nullable();
             $table->timestamps();
         });
 
@@ -71,6 +78,8 @@ return new class extends Migration
             $table->unsignedBigInteger('profile_id');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('email_verification_code')->nullable();
+            //puntos
+            $table->integer('puntos')->default(0);
             $table->rememberToken();
             $table->timestamps();
         });

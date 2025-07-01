@@ -40,6 +40,11 @@ const mainNavItems: NavItem[] = [
         icon: Building,
     },
     {
+        title: 'Puntos',
+        href: route('puntos.edit'),
+        icon: Folder,
+    },
+    {
         title: 'Ciudadanos',
         href: route('ciudadano.index'),
         icon: IconCiudadanos,

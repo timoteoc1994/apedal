@@ -8,6 +8,7 @@ use App\Models\Ciudadano;
 use App\Models\Reciclador;
 use App\Models\Asociacion;
 use App\Models\City;
+use App\Models\Puntos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -22,6 +23,8 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
+        Log::info('Entrando a register');
+        Log::info('Datos recibidos: ' . json_encode($request->all()));
         try {
             // Validar datos comunes
             $common = $request->validate([
@@ -47,12 +50,29 @@ class AuthController extends Controller
             if ($common['role'] === 'ciudadano') {
                 $profileData = $request->validate([
                     'name' => 'required|string',
+                    'nickname' => 'required|string',
                     'direccion' => 'required|string',
                     'ciudad' => 'required|string',
-                    'telefono' => 'nullable|string',
-                    'referencias_ubicacion' => 'nullable|string',
+                    'telefono' => 'required|string',
+                    'referencias_ubicacion' => 'required|string',
                 ]);
+                //puntos
+                //1.- comparar si la fecha cae dentro de una promocional con mi tabla puntos
+                $datospuntos=Puntos::first();
+                //comparar la fecha de hoy hasta la fecha para saber que puntos darle
+ 
+                $hoy = now()->toDateString(); 
+                $puntos_usuario = 100; // Inicializar puntos del usuario
+                //imprimir compracion
 
+                if($hoy<=$datospuntos->fecha_hasta){
+                    //se le da los puntos de promocion
+                    $puntos_usuario=$datospuntos->puntos_registro_promocional;
+                }else{
+                    //se le da puntos normales
+                    $puntos_usuario=$datospuntos->puntos_reciclado_normal;
+                }
+  
                 $profile = Ciudadano::create($profileData);
                 // Generar código de verificación
                 $verificationCode = rand(100000, 999999);
@@ -70,21 +90,30 @@ class AuthController extends Controller
                     'name' => 'required|string',
                     'number_phone' => 'required|string',
                     'city' => 'required|string',
-                    'direccion' => 'nullable|string',
-                    'descripcion' => 'nullable|string',
+                    'direccion' => 'required|string',
+                    'descripcion' => 'required|string',
+                    'dias_atencion' => 'required|array',
+                    'hora_apertura' => 'required|string',
+                    'hora_cierre' => 'required|string',
+                    'materiales_aceptados' => 'required|array',
                 ]);
+                // Convertir arrays a JSON
+    $profileData['dias_atencion'] = json_encode($profileData['dias_atencion']);
+    $profileData['materiales_aceptados'] = json_encode($profileData['materiales_aceptados']);
 
                 $profile = Asociacion::create($profileData);
             }
 
             // Crear usuario de autenticación con el token FCM
             if ($common['role'] === 'ciudadano') {
+                Log::info('Creando usuario ciudadano');
                 $userData = [
                     'email' => $common['email'],
                     'password' => Hash::make($common['password']),
                     'role' => $common['role'],
                     'profile_id' => $profile->id,
                     'email_verification_code' => $verificationCode,
+                    'puntos'=>$puntos_usuario ?? 0, // Añadir puntos al usuario
                 ];
                 $user = AuthUser::create($userData);
                 // Enviar correo con el código
@@ -92,11 +121,13 @@ class AuthController extends Controller
                     $message->to($user->email)->subject('Código de verificación de correo');
                 });
             } else {
+                Log::info('Creando usuario reciclador o asociacion');
                 $userData = [
                     'email' => $common['email'],
                     'password' => Hash::make($common['password']),
                     'role' => $common['role'],
                     'profile_id' => $profile->id,
+                    'puntos'=>$puntos_usuario ?? 0, 
                 ];
                 $user = AuthUser::create($userData);
             }

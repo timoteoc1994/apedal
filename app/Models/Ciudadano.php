@@ -18,6 +18,7 @@ class Ciudadano extends Model
      */
     protected $fillable = [
         'name',
+        'nickname',
         'telefono',
         'direccion',
         'ciudad',
@@ -25,13 +26,7 @@ class Ciudadano extends Model
         'referencias_ubicacion',
     ];
 
-    /**
-     * Obtener las solicitudes de recolección de este ciudadano
-     */
-    public function solicitudes()
-    {
-        return $this->hasMany(Solicitud::class, 'ciudadano_id');
-    }
+
 
     /**
      * Obtener la cuenta de usuario asociada
@@ -39,5 +34,10 @@ class Ciudadano extends Model
     public function authUser()
     {
         return $this->hasOne(AuthUser::class, 'profile_id')->where('role', 'ciudadano');
+    }
+    public function setNameAttribute($value)
+    {
+        $this->attributes['name'] = ucwords(strtolower($value));
+        $this->attributes['nickname'] = ucwords(strtolower($value));
     }
 }

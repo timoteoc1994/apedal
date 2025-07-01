@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Models\Asociacion;
 use App\Models\AuthUser;
 use App\Models\City;
+use App\Models\Reciclador;
 
 
 class ViewAsociationController extends Controller
@@ -25,7 +26,15 @@ class ViewAsociationController extends Controller
             })
             ->with('asociacion') // Cargar la relación
             ->paginate(10);
-
+        
+        //anadir una nueva variable numero de reciclador a $asociations
+       $numero_recicladores=0;
+        foreach ($asociations as $asociation) {
+            $numero_recicladores = Reciclador::where('asociacion_id',$asociation->profile_id)
+                ->where('asociacion_id', $asociation->id)
+                ->count();
+            $asociation->numero_recicladores = $numero_recicladores;
+        }
 
         return Inertia::render('asociation/index', [
             'Asociations' => $asociations,

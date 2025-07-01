@@ -62,5 +62,6 @@ class FormulariMensual extends Model
         'fomix_precio',
         'polipropileno_kilos',
         'polipropileno_precio',
+        'archivos_adjuntos',
     ];
 }

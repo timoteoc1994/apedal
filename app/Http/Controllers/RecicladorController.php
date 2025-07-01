@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Solicitud;
+use App\Events\ActualizarPuntosCiudadano;
+use App\Events\CancelarSolicitudReciclador;
 use App\Models\Reciclador;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -221,27 +222,46 @@ public function updateReciclador(Request $request, $id)
 
     // En un controlador como RecicladorController.php
     public function Pendientes(Request $request)
-    {
-        $solicitudes = SolicitudRecoleccion::where('reciclador_id', Auth::id())
-            ->where('estado', '!=', 'completado')
-            ->select([
-                'id',
-                'fecha',
-                'hora_inicio',
-                'hora_fin',
-                'latitud',
-                'longitud',
-                'peso_total',
-                'estado',
-                'user_id' // Necesario para la relación
-            ])
-            ->with([
-                'authUser:id,email,profile_id',
-                'authUser.ciudadano:id,name,logo_url,telefono' // Agrega logo_url aquí
-            ])
-            ->latest()
-            ->get()
-            ->map(function ($solicitud) {
+        {
+            Log::info('el request es: ' . json_encode($request->all()));
+
+            $query = SolicitudRecoleccion::where('reciclador_id', Auth::id())
+                ->select([
+                    'id',
+                    'fecha',
+                    'hora_inicio',
+                    'hora_fin',
+                    'latitud',
+                    'longitud',
+                    'peso_total',
+                    'estado',
+                    'user_id',
+                    'foto_ubicacion',
+                ])
+                ->with([
+                    'authUser:id,email,profile_id',
+                    'authUser.ciudadano:id,name,logo_url,telefono'
+                ])
+                ->where(function($q) use ($request) {
+                    // Siempre incluir los estados "asignado", "en_camino", "pendiente"
+                    $q->whereIn('estado', ['asignado', 'en_camino', 'pendiente']);
+
+                    // O incluir los que cumplen el filtro de fechas (y no están en esos estados)
+                    if ($request->filled('fecha_inicio') || $request->filled('fecha_fin')) {
+                        $q->orWhere(function($sub) use ($request) {
+                            if ($request->filled('fecha_inicio')) {
+                                $sub->whereDate('created_at', '>=', $request->fecha_inicio);
+                            }
+                            if ($request->filled('fecha_fin')) {
+                                $sub->whereDate('created_at', '<=', $request->fecha_fin);
+                            }
+                            // Excluir los estados "asignado", "en_camino", "pendiente"
+                            $sub->whereNotIn('estado', ['asignado', 'en_camino', 'pendiente']);
+                        });
+                    }
+                });
+
+            $solicitudes = $query->latest()->get()->map(function ($solicitud) {
                 return [
                     'id' => $solicitud->id,
                     'fecha' => $solicitud->fecha,
@@ -251,6 +271,7 @@ public function updateReciclador(Request $request, $id)
                     'longitud' => $solicitud->longitud,
                     'peso_total' => $solicitud->peso_total,
                     'estado' => $solicitud->estado,
+                    'foto_ubicacion' => $solicitud->foto_ubicacion,
                     'ciudadano' => [
                         'name' => $solicitud->authUser?->ciudadano?->name,
                         'logo_url' => $solicitud->authUser?->ciudadano?->logo_url,
@@ -260,11 +281,11 @@ public function updateReciclador(Request $request, $id)
                 ];
             });
 
-        return response()->json([
-            'success' => true,
-            'data' => $solicitudes
-        ]);
-    }
+            return response()->json([
+                'success' => true,
+                'data' => $solicitudes
+            ]);
+        }
 
     public function obtenerContadorPendientes(Request $request)
     {
@@ -275,10 +296,20 @@ public function updateReciclador(Request $request, $id)
             $contador = SolicitudRecoleccion::where('reciclador_id', $recicladorId)
                 ->whereIn('estado', ['pendiente', 'asignado', 'en_camino']) // Estados que consideras "pendientes"
                 ->count();
+            //verificar si algo tiene en_camino
+            $camino = SolicitudRecoleccion::where('reciclador_id', $recicladorId)
+                ->where('estado', 'en_camino')
+                ->exists();
+            Log::info('Contador de pendientes obtenido', [
+                'reciclador_id' => $recicladorId,
+                'contador' => $contador,
+                'camino' => $camino
+            ]);
 
             return response()->json([
                 'success' => true,
                 'contador' => $contador,
+                'camino'=> $camino,
                 'message' => 'Contador de pendientes obtenido correctamente'
             ]);
         } catch (\Exception $e) {
@@ -347,13 +378,7 @@ public function updateReciclador(Request $request, $id)
                 'role' => $authUser->role
             ]);
 
-            if ($authUser->role !== 'reciclador') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Solo los recicladores pueden ver sus asignaciones',
-                ], 403);
-            }
-
+         
             // Primero, veamos todas las solicitudes con estado 'buscando_reciclador'
             $solicitudesBuscandoReciclador = SolicitudRecoleccion::where('estado', 'buscando_reciclador')->get();
             Log::info('Total solicitudes buscando_reciclador', [
@@ -519,7 +544,7 @@ public function updateReciclador(Request $request, $id)
             }
 
             // Obtener la solicitud y verificar que pertenezca a este reciclador
-            $asignacion = SolicitudRecoleccion::where('id', $id)
+            $asignacion = SolicitudRecoleccion::where('id', $id)->where('reciclador_id', $authUser->id)
                 ->with(['authUser.ciudadano', 'materiales'])
                 ->first();
 
@@ -559,6 +584,18 @@ public function updateReciclador(Request $request, $id)
 
             // Buscar la solicitud
             $solicitud = SolicitudRecoleccion::find($id);
+
+            //ver si el reciclador tiene alguna socilitud en camino
+          /* $solicitudEnCamino= SolicitudRecoleccion::where('reciclador_id', $authUser->id)
+                ->where('estado', 'en_camino')
+                ->exists();
+                if($solicitud->es_inmediata==1){if ($solicitudEnCamino) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya tienes una solicitud en camino, no puedes tomar otra',
+                ], 409); // Cambiado a 409 (Conflict) que es más apropiado
+            }} */
+            
 
             // Verificar si la solicitud existe
             if (!$solicitud) {
@@ -814,9 +851,6 @@ public function updateReciclador(Request $request, $id)
                 'mensaje' => 'No puedes cambiar a estado disponible mientras este realizando una solicitud'
             ];
         }
-
-
-
         // Si pasa todas las validaciones, puede cambiar su estado
         return [
             'puede_cambiar' => true,
@@ -833,6 +867,7 @@ public function updateReciclador(Request $request, $id)
     public function actualizarRevisionMateriales(Request $request, $id)
     {
 
+        Log::info('Datos recibidos para revisión de materiales: ' . json_encode($request->all()));
         try {
             $user = Auth::user();
             $validator = Validator::make($request->all(), [
@@ -842,6 +877,8 @@ public function updateReciclador(Request $request, $id)
                 'materiales.*.peso' => 'required|numeric|min:0',
                 'peso_total' => 'required|numeric|min:0',
                 'calificacion' => 'required|integer|min:1|max:50',
+                'comentario_reciclador' => 'nullable|string|max:255',
+                
             ]);
 
             if ($validator->fails()) {
@@ -884,17 +921,13 @@ public function updateReciclador(Request $request, $id)
             try {
                 // Actualizar peso total revisado
                 $solicitud->peso_total_revisado = $request->peso_total;
-
-                // Actualizar calificación del ciudadano
                 $solicitud->calificacion_ciudadano = $request->calificacion;
-
-                // Actualizar el estado a completado
                 $solicitud->estado = 'completado';
                 $solicitud->fecha_completado = now();
-
+                $solicitud->comentario_reciclador = $request->comentario_reciclador; // <-- Agrega esta línea
                 $solicitud->save();
 
-                // Actualizar materiales
+             // Actualizar materiales
                 foreach ($request->materiales as $materialData) {
                     $material = Material::find($materialData['id']);
 
@@ -905,9 +938,56 @@ public function updateReciclador(Request $request, $id)
                         $material->save();
                     }
                 }
+                //agregar puntos al ciudadano
+                $user_ciudadano = AuthUser::find($solicitud->user_id);
+                $user_ciudadano->puntos +=$request->calificacion;
+                $user_ciudadano->save();
 
-                // Confirmar transacción
+                //agregar puntos extras si tiene solciitud completas 3 completadas dar 50 puntos si tiene 5 dar 100 y si tiene mas de 10 dar 200
+                $solicitudesCompletadas = SolicitudRecoleccion::where('user_id', $solicitud->user_id)
+                    ->where('estado', 'completado')
+                    ->count();
+
+                if ($solicitudesCompletadas == 10) {
+                    $user_ciudadano->puntos += 200;
+                    //enviar notificacion al ciudadano
+                    FirebaseService::sendNotification($solicitud->user_id, [
+                        'title' => '¡Felicidades!',
+                        'body' => 'Has completado 10 solicitudes y has recibido 200 puntos adicionales.',
+                        'data' => [
+                            'route' => '/historial_solicitudes',
+                            'solicitud_id' => (string)$solicitud->id,
+                        ]
+                    ]);
+                } elseif ($solicitudesCompletadas == 5) {
+                    $user_ciudadano->puntos += 100;
+                    //enviar notificacion al ciudadano
+                    FirebaseService::sendNotification($solicitud->user_id, [
+                        'title' => '¡Buen trabajo!',
+                        'body' => 'Has completado 5 solicitudes y has recibido 100 puntos adicionales.',
+                        'data' => [
+                            'route' => '/historial_solicitudes',
+                            'solicitud_id' => (string)$solicitud->id,
+                        ]
+                    ]);
+                } elseif ($solicitudesCompletadas == 3) {
+                    $user_ciudadano->puntos += 50;
+                    //enviar notificacion al ciudadano
+                    FirebaseService::sendNotification($solicitud->user_id, [
+                        'title' => '¡Buen trabajo!',
+                        'body' => 'Has completado 3 solicitudes y has recibido 50 puntos adicionales.',
+                        'data' => [
+                            'route' => '/historial_solicitudes',
+                            'solicitud_id' => (string)$solicitud->id,
+                        ]
+                    ]);
+                }
+                $user_ciudadano->save();
+
                 DB::commit();
+                
+                //evento para actualizar los puntos del ciudadano actual
+                event(new ActualizarPuntosCiudadano($user_ciudadano->id, $user_ciudadano->puntos));
                 //emitir el evento que se completo
                 event(new SolicitudCompleto($solicitud->id));
 
@@ -927,6 +1007,90 @@ public function updateReciclador(Request $request, $id)
                 'message' => 'Error al actualizar revisión de materiales: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function actualizarRevisionMaterialesunico(Request $request, $id)
+    {
+
+        Log::info('Datos recibidos unicossssss: ' . json_encode($request->all()));
+        try {
+            $user = Auth::user();
+            $validator = Validator::make($request->all(), [
+                'materiales' => 'required|array',
+                'materiales.*.id' => 'required|exists:materiales,id',
+                'materiales.*.tipo' => 'required|string',
+                'materiales.*.peso' => 'required|numeric|min:0',
+                'peso_total' => 'required|numeric|min:0',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Datos inválidos',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Obtener la solicitud
+            $solicitud = SolicitudRecoleccion::find($id);
+
+            if (!$solicitud) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Solicitud no encontrada'
+                ], 404);
+            }
+
+            // Verificar que la solicitud pertenezca al reciclador
+            if ($solicitud->reciclador_id != $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permiso para actualizar esta solicitud'
+                ], 403);
+            }
+
+            // Iniciar transacción
+            DB::beginTransaction();
+
+            try {
+                // Actualizar peso total revisado
+                $solicitud->peso_total_revisado = $request->peso_total;
+                $solicitud->save();
+
+             // Actualizar materiales
+                foreach ($request->materiales as $materialData) {
+                    $material = Material::find($materialData['id']);
+
+                    // Verificar que el material pertenezca a la solicitud
+                    if ($material && $material->solicitud_id == $id) {
+                        $material->peso_revisado = $materialData['peso'];
+                        $material->reciclador_id = $user->id;
+                        $material->save();
+                    }
+                }
+
+                // Confirmar transacción
+                DB::commit();
+                //emitir el evento que se completo
+                event(new SolicitudCompleto($solicitud->id));
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Revisión de materiales guardadas correctamente'
+                ]);
+            } catch (\Exception $e) {
+                // Revertir transacción en caso de error
+                DB::rollBack();
+                throw $e;
+            }
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar revisión de materiales: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar revisión de materiales: ' . $e->getMessage()
+            ], 500);
+        }
+       
     }
 
     /**
@@ -1204,5 +1368,49 @@ public function updateReciclador(Request $request, $id)
                 'message' => 'Error al obtener información de sincronización',
             ], 500);
         }
+    }
+    public function cancelar_solicitud_reciclador(Request $request)
+    {
+
+        $request->validate([
+            'solicitud_id' => 'required|integer|exists:Solicitudes_recoleccion,id',
+            'motivo' => 'required|string|max:255',
+            'comentario' => 'nullable|string|max:500',
+        ]);
+
+        $solicitud = SolicitudRecoleccion::find($request->solicitud_id);
+
+        // Opcional: Verifica que el usuario autenticado sea el dueño o tenga permisos
+        if ($solicitud->reciclador_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No autorizado para cancelar esta solicitud.',
+            ], 403);
+        }
+        
+
+        // Cambia el estado y guarda el motivo
+        $solicitud->estado = 'cancelado';
+        $solicitud->comentarios = '(Cancelado por el reciclador) Motivo: '.$request->motivo.' '.$request->comentario;
+        $solicitud->save();
+
+        //enviar evento aviso
+        event(new CancelarSolicitudReciclador($solicitud, $request->motivo, $request->comentario));
+        Log::info('evento enviado');
+
+        //enviar notificacion al ciudadano
+        FirebaseService::sendNotification($solicitud->user_id, [
+            'title' => 'Solicitud cancelada',
+            'body' => 'El reciclador ha cancelado la solicitud de recolección.',
+            'data' => [
+                'route' => '/detalle_solicitud_ciudadano',
+                'solicitud_id' => (string)$solicitud->id,
+            ]
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Solicitud cancelada con éxito',
+        ]);
     }
 }

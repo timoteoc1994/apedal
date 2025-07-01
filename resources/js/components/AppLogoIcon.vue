@@ -13,5 +13,5 @@ defineProps<Props>();
 </script>
 
 <template>
-      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR4MPGhOeemwM5TS3WGi-QTN9fFv3thD0Gj3w&s" alt="">
+      <center><img width="100px" src="/storage/plataforma/logoplataforma.png"></center>
 </template>

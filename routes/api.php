@@ -70,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/change-password', [ActualizarPerfilController::class, 'changePassword']);
     Route::post('/profile/update', [ActualizarPerfilController::class, 'update']);
     Route::post('/profile/update-with-image', [ActualizarPerfilController::class, 'updateWithImage']);
+    Route::post('/profile/upload_referential_images', [ActualizarPerfilController::class, 'uploadReferentialImages']);
 
     // Rutas para ciudadanos
     Route::middleware(['role:ciudadano'])->prefix('ciudadano')->group(function () {
@@ -96,6 +97,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/asociaciones', [MapaAsocicacion::class, 'getAsociaciones']);
         //obtener impacto ambiental del ciudadano
         Route::get('/impacto-ambiental', [ImpactoAmbientalController::class, 'obtenerEstadisticasPorMes']);
+
+        //cancelar solicitud por parte del ciudadano
+        Route::post('/cancelar_solicitud_ciudadano', [SolicitudRecoleccionController::class, 'cancelar_solicitud_ciudadano']);
+        //actualizar puntos del ciudadano manual
+        Route::post('/actualizar-puntos-ciudadano', [SolicitudRecoleccionController::class, 'actualizarPuntosCiudadano']);
     });
 
 
@@ -117,6 +123,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         //ruta para actualizar la revision de los materiales y calificar al ciudadano
         Route::put('/asignaciones/{id}/revision', [RecicladorController::class, 'actualizarRevisionMateriales']);
+
+        //actualizar solo un material de la asignacion
+        Route::put('/asignaciones/{id}/editar-materiales', [RecicladorController::class, 'actualizarRevisionMaterialesunico']);
 
         //ruta para ver los pendientes del reciclador 
         Route::get('/reciclador/solicitudes/pendientes', [RecicladorController::class, 'Pendientes']);
@@ -140,6 +149,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         //obtener estadisticas para el perfil
         Route::get('/estadisticas/perfil', [RecicladorController::class, 'obtenerEstadisticas']);
+
+        //cancelar la solcitud por parte del reciclador
+        Route::post('/cancelar_solicitud_reciclador', [RecicladorController::class, 'cancelar_solicitud_reciclador']);
     });
 
 

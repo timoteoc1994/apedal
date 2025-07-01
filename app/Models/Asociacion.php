@@ -26,6 +26,11 @@ class Asociacion extends Model
         'logo_url',
         'verified',
         'color',
+        'imagen_referencial',
+        'dias_atencion',
+        'hora_apertura',
+        'hora_cierre',
+        'materiales_aceptados',
     ];
 
     /**
@@ -59,5 +64,9 @@ class Asociacion extends Model
     public function zonas(): HasMany
     {
         return $this->hasMany(Zona::class);
+    }
+    public function setNameAttribute($value)
+    {
+        $this->attributes['name'] = ucwords(strtolower($value));
     }
 }

@@ -21,5 +21,25 @@ class DatabaseSeeder extends Seeder
             'email' => 'edgartimoteo@gmail.com',
             'password' => bcrypt('amorjanet123'),
         ]);
+
+        // Crear ciudades
+        $ciudades = ['Cuenca', 'Ambato', 'Quito'];
+        foreach ($ciudades as $ciudad) {
+            City::create(['user_id' => $user->id, 'name' => $ciudad]);
+        }
+
+        // Crear versiones de app
+        \App\Models\AppVersion::create([
+            'platform' => 'android',
+            'min_version' => '1.0.0',
+            'latest_version' => '1.0.1',
+            'update_url' => 'https://ninari.org/'
+        ]);
+        \App\Models\AppVersion::create([
+            'platform' => 'ios',
+            'min_version' => '1.0.0',
+            'latest_version' => '1.0.1',
+            'update_url' => 'https://ninari.org/'
+        ]);
     }
 }

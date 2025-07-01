@@ -50,7 +50,12 @@ class MapaAsocicacion extends Controller
                     'descripcion',
                     'logo_url',
                     'color',
-                    'verified'
+                    'verified',
+                    'imagen_referencial',
+                    'dias_atencion',
+                    'hora_apertura',
+                    'hora_cierre',
+                    'materiales_aceptados'
                 ])
                 ->get();
 
@@ -78,6 +83,11 @@ class MapaAsocicacion extends Controller
                     'activo' => $asociacion->verified,
                     'latitud' => $coordenadas['latitud'],
                     'longitud' => $coordenadas['longitud'],
+                    'imagen_referencial' => $asociacion->imagen_referencial,
+                    'dias_atencion' => $asociacion->dias_atencion,
+                    'hora_apertura' => $asociacion->hora_apertura,
+                    'hora_cierre' => $asociacion->hora_cierre,
+                    'materiales_aceptados' => $asociacion->materiales_aceptados,
                 ];
             });
 

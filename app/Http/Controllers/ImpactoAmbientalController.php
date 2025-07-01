@@ -116,6 +116,28 @@ class ImpactoAmbientalController extends Controller
         $total_evitado_consumo_kwh = $evitado_consumo_kwh + $evitado_consumo_kwh_plasticos + $evitado_consumo_kwh_aluminio;
 
 
+        // Construir impactos solo si el valor es mayor a cero
+        $impactos_papel = [];
+        if ($evitado_tala_arboles > 0) $impactos_papel[] = "Se ha evitado la tala de " . round($evitado_tala_arboles, 2) . " árboles adultos";
+        if ($oxigeno_producido > 0) $impactos_papel[] = "Se produce el oxígeno necesario para " . round($oxigeno_producido, 0) . " personas";
+        if ($co2_captado > 0) $impactos_papel[] = "Se captarán " . round($co2_captado, 1) . " Kg de CO2 al año";
+        if ($evitado_consumo_agua > 0) $impactos_papel[] = "Se ha evitado el consumo de  " . round($evitado_consumo_agua, 0) . " litros de agua";
+        if ($evitado_consumo_kwh > 0) $impactos_papel[] = "Se ha evitado el consumo de  " . round($evitado_consumo_kwh, 0) . " KWh de energía";
+        if ($evitado_c02_anio > 0) $impactos_papel[] = "Se ha evitado la emisión de " . round($evitado_c02_anio, 0) . " Kg de CO2 al año";
+        if ($evitado_emitir_admosfera > 0) $impactos_papel[] = "Se ha evitado emitir a la atmósfera " . round($evitado_emitir_admosfera, 0) . " Kg de CO2";
+
+        $impactos_plastico = [];
+        if ($evitado_consumo_agua_plasticos > 0) $impactos_plastico[] = "Se ha evitado el consumo de " . round($evitado_consumo_agua_plasticos, 0) . " litros de agua";
+        if ($evitado_emitir_admosfera_plasticos > 0) $impactos_plastico[] = "Se ha evitado emitir a la atmósfera " . round($evitado_emitir_admosfera_plasticos, 0) . " Kg de CO2";
+        if ($evitado_consumo_kwh_plasticos > 0) $impactos_plastico[] = "Se ha evitado el consumo de " . round($evitado_consumo_kwh_plasticos, 0) . " KWh de energía";
+        if ($recuperado_botellas_pet > 0) $impactos_plastico[] = "Se ha recuperado el equivalente a  " . round($recuperado_botellas_pet, 0) . " botellas PET de 500 ml";
+
+        $impactos_latas = [];
+        if ($evitado_explotar_bauxita > 0) $impactos_latas[] = "Se ha evitado explotar " . round($evitado_explotar_bauxita, 0) . " Kg de Bauxita";
+        if ($recuperado_latas_bebida > 0) $impactos_latas[] = "Se ha recuperado el equivalente a  " . round($recuperado_latas_bebida, 0) . " latas de bebida de 355 ml";
+        if ($evitado_emitir_admosfera_aluminio > 0) $impactos_latas[] = "Se ha evitado emitir a la atmósfera " . round($evitado_emitir_admosfera_aluminio, 0) . " Kg de CO2";
+        if ($evitado_consumo_kwh_aluminio > 0) $impactos_latas[] = "Se ha evitado el consumo de " . round($evitado_consumo_kwh_aluminio, 0) . " KWh de energía";
+
         $estadisticas = [
             'anio' => (int)$anio,
             'mes' => (int)$mes,
@@ -123,39 +145,17 @@ class ImpactoAmbientalController extends Controller
 
             'papel' => [
                 'peso_total' => round($suma_papel, 2),
-                'impactos' => [
-                    "Se ha evitado la tala de " . round($evitado_tala_arboles, 2) . " árboles adultos",
-                    "Se produce el oxígeno necesario para " . round($oxigeno_producido, 0) . " personas",
-                    "Se captarán " . round($co2_captado, 1) . " Kg de CO2 al año",
-                    "Se ha evitado el consumo de  " . round($evitado_consumo_agua, 0) . " litros de agua",
-                    "Se ha evitado el consumo de  " . round($evitado_consumo_kwh, 0) . " KWh de energía",
-                    "Se ha evitado la emisión de " . round($evitado_c02_anio, 0) . " Kg de CO2 al año",
-                    "Se ha evitado emitir a la atmósfera " . round($evitado_emitir_admosfera, 0) . " Kg de CO2",
-
-                ]
+                'impactos' => $impactos_papel
             ],
 
             'plastico' => [
                 'peso_total' => round($total_plasticos_calculo, 2),
-                'impactos' => [
-                    "Se ha evitado el consumo de " . round($evitado_consumo_agua_plasticos, 0) . " litros de agua",
-                    "Se ha evitado emitir a la atmósfera " . round($evitado_emitir_admosfera_plasticos, 0) . " Kg de CO2",
-                    "Se ha evitado el consumo de " . round($evitado_consumo_kwh_plasticos, 0) . " KWh de energía",
-                    "Se ha recuperado el equivalente a  " . round($recuperado_botellas_pet, 0) . " botellas PET de 500 ml",
-
-                ]
+                'impactos' => $impactos_plastico
             ],
             'latas' => [
                 'peso_total' => round($total_calculo_aluminio, 2),
-                'impactos' => [
-                    "Se ha evitado explotar " . round($evitado_explotar_bauxita, 0) . " Kg de Bauxita",
-                    "Se ha recuperado el equivalente a  " . round($recuperado_latas_bebida, 0) . " latas de bebida de 355 ml",
-                    "Se ha evitado emitir a la atmósfera " . round($evitado_emitir_admosfera_aluminio, 0) . " Kg de CO2",
-                    "Se ha evitado el consumo de " . round($evitado_consumo_kwh_aluminio, 0) . " KWh de energía",
-
-                ]
+                'impactos' => $impactos_latas
             ],
-
 
             'resumen_total' => [
                 'total_consumo_agua' => round($total_evitado_consumo_agua, 0),

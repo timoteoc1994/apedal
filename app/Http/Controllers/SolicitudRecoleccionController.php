@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ActualizarPuntosCiudadano;
+use App\Events\CancelarSolicitudCiudadano;
 use App\Events\NuevaSolicitudInmediata;
 use App\Events\SolicitudAgendada;
 use Illuminate\Http\Request;
@@ -116,10 +118,11 @@ class SolicitudRecoleccionController extends Controller
             // Si hay un reciclador asignado, añadir su información
             $authUser = AuthUser::find($solicitud->reciclador_id);
             $datosReciclador = Reciclador::find($authUser->profile_id);
-
-            // Imprimir para depuración
+           $asociacion = Asociacion::find($datosReciclador->asociacion_id);
             Log::info('Datos del reciclador: ' . json_encode($datosReciclador));
-            Log::info('Nombre del reciclador: ' . $datosReciclador->name);
+            Log::info('Datos de la asociación: ' . json_encode($asociacion));
+            $nombre_asociacion = $asociacion->name ? $asociacion->name : null;
+            Log::info('el nombre de la asociacion es: ' . $nombre_asociacion);
 
             if ($datosReciclador) {
                 Log::info('SI LLEGAMOS HASTA AQUI');
@@ -128,6 +131,7 @@ class SolicitudRecoleccionController extends Controller
                     'nombre' => $datosReciclador->name,
                     'telefono' => $datosReciclador->telefono,
                     'foto' => $datosReciclador->logo_url,
+                    'nombre_asociacion' => $nombre_asociacion,
                 ];
                 Log::info('SI LLEGAMOS HASTA AQUI X2');
                 //HACER AUTH
@@ -221,7 +225,7 @@ class SolicitudRecoleccionController extends Controller
                 'result' => $result
             ];
         } catch (\Exception $e) {
-            \Log::error('Error al enviar notificación FCMc: ' . $e->getMessage());
+
             return [
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage(),
@@ -394,7 +398,8 @@ class SolicitudRecoleccionController extends Controller
     public function store(Request $request)
     {
         //imprimir request
-        Log::info('Request: ' . $request->estado);
+        Log::info('datos del request: ' . json_encode($request->all()));
+
 
         // Validar los datos básicos
         $validator = Validator::make($request->all(), [
@@ -407,8 +412,9 @@ class SolicitudRecoleccionController extends Controller
             'longitud' => 'required|numeric',
             'peso_total' => 'required|numeric|min:0.1',
             'materiales' => 'required|json',
-            'imagenes.*' => 'nullable|image|max:5120', // Cambiado a imagenes.* para coincidir con Flutter
+           'imagenes.*' => 'required|image|mimes:jpeg,png,jpg|max:2048', // Cambiado a imagenes.* para coincidir con Flutter
             'es_inmediata' => 'required',
+            'foto_ubicacion' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // Nueva validación para foto_ubicacion
         ]);
 
         //anadir una variable a varidator
@@ -431,6 +437,8 @@ class SolicitudRecoleccionController extends Controller
             ], 422);
         }
 
+
+
         // Procesar las imágenes si existen
         $rutasImagenes = [];
         if ($request->hasFile('imagenes')) {
@@ -440,6 +448,15 @@ class SolicitudRecoleccionController extends Controller
                 $rutasImagenes[] = $rutaImagen;
             }
         }
+
+         // Guardar la foto de ubicación si existe
+            $rutaFotoUbicacion = null;
+            if ($request->hasFile('foto_ubicacion')) {
+                $fotoUbicacion = $request->file('foto_ubicacion');
+                $nombreFotoUbicacion = time() . '_ubicacion_' . Auth::id() . '.' . $fotoUbicacion->getClientOriginalExtension();
+                $rutaFotoUbicacion = $fotoUbicacion->storeAs('solicitudes', $nombreFotoUbicacion, 'public');
+            }
+
 
         //------esto para verificar si la solicitud cae dentro de una zona de una asociacion------
         //ver a que asociacion va permanecer la solicitud y si no cae dentro de una zona se puede abrir para que cualquier zona pueda recogerla
@@ -456,11 +473,11 @@ class SolicitudRecoleccionController extends Controller
         $user = AuthUser::with('ciudadano')->find(Auth::id());
 
         if (!$user || !$user->ciudadano) {
-            \Log::warning('No se encontró un usuario autenticado o no tiene un ciudadano asociado.');
+
             return response()->json(['error' => 'Usuario no válido'], 400);
         }
 
-        \Log::info('El usuario registrado es de la ciudad: ' . $user->ciudadano->ciudad);
+
 
         // Buscar todas las asociaciones 
         // Después de obtener las asociaciones
@@ -493,7 +510,7 @@ class SolicitudRecoleccionController extends Controller
                     // Obtener los IDs de todos los recicladores de esta asociación
                     $ids_disponibles = $this->obtenerRecicladoresdisponibles($asociacion);
 
-                    \Log::info("Punto dentro de la zona: {$zona->nombre} de la asociación: {$asociacion->nombre}");
+              
                     break 2; // Salir de ambos bucles si encontramos la zona
                 }
 
@@ -519,10 +536,10 @@ class SolicitudRecoleccionController extends Controller
         //------fin buscar asociacion------
         //actualizar el asociacion_id para buscar el el perfil en auth
         //imprimiendo el asociacion_id
-        \Log::info('El asociacion_id es: ' . $asociacion_id);
+  
         $usuario = AuthUser::where('profile_id', $asociacion_id)->where('role', 'asociacion')->first();
         //imprimor usuario;
-        \Log::info('El usuario es: ' . $usuario);
+
         $id_de_asocacion = $usuario->id;
         // Crear la solicitud
         $solicitud = SolicitudRecoleccion::create([
@@ -541,6 +558,7 @@ class SolicitudRecoleccionController extends Controller
             'imagen' => json_encode($rutasImagenes), // Guardar array de rutas en formato JSON
             'estado' => 'buscando_reciclador',
             'ciudad' => $user->ciudadano->ciudad,
+            'foto_ubicacion' => $rutaFotoUbicacion, // Guardar la ruta de la foto de ubicación
         ]);
 
         // Guardar los materiales
@@ -682,6 +700,17 @@ class SolicitudRecoleccionController extends Controller
                         $archivos = scandir($directorioSolicitudes);
                         Log::info("Archivos en el directorio: " . json_encode(array_diff($archivos, ['.', '..'])));
                     }
+                }
+            }
+            //tambien eliminar la imagen que esta en foto_ubicacion
+            if ($solicitud->foto_ubicacion) {
+                $rutaFotoUbicacion = public_path('storage/' . $solicitud->foto_ubicacion);
+                Log::info("Intentando eliminar foto de ubicación: {$rutaFotoUbicacion}");
+                if (file_exists($rutaFotoUbicacion)) {
+                    unlink($rutaFotoUbicacion);
+                    Log::info("✅ Foto de ubicación eliminada correctamente: {$rutaFotoUbicacion}");
+                } else {
+                    Log::error("❌ Foto de ubicación no encontrada: {$rutaFotoUbicacion}");
                 }
             }
 
@@ -994,5 +1023,56 @@ class SolicitudRecoleccionController extends Controller
                 'foto' => $ciudadano->logo_url ?? null,
             ],
         ];
+    }
+     public function cancelar_solicitud_ciudadano(Request $request)
+    {
+        Log::info('Cancelando solicitud por reciclador', [
+            'request_data' => $request->all(),
+            'user_id' => Auth::id()
+        ]);
+        $request->validate([
+            'solicitud_id' => 'required|integer|exists:Solicitudes_recoleccion,id',
+            'motivo' => 'required|string|max:255',
+            'comentario' => 'nullable|string|max:500',
+        ]);
+
+        $solicitud = SolicitudRecoleccion::find($request->solicitud_id);
+
+        // Opcional: Verifica que el usuario autenticado sea el que creo la solicitud
+        if ($solicitud->user_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No autorizado para cancelar esta solicitud.',
+            ], 403);
+        }
+        
+
+        // Cambia el estado y guarda el motivo
+        $solicitud->estado = 'cancelado';
+        $solicitud->comentarios = '(Cancelado por el ciudadano) Motivo: '.$request->motivo.' '.$request->comentario;
+        $solicitud->save();
+
+        //enviar evento aviso
+        event(new CancelarSolicitudCiudadano($solicitud, $request->motivo, $request->comentario));
+
+        //enviar notificacion al ciudadano
+        FirebaseService::sendNotification($solicitud->reciclador_id, [
+            'title' => 'Solicitud cancelada',
+            'body' => 'El ciudadano ha cancelado la solicitud de recolección.',
+            'data' => [
+                'route' => '/detalle_solicitud_ciudadano',
+                'solicitud_id' => (string)$solicitud->id,
+            ]
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Solicitud cancelada con éxito',
+        ]);
+    }
+    public function actualizarPuntosCiudadano(Request $request)
+    { 
+        $user= Auth::user();
+        event(new ActualizarPuntosCiudadano($user->id, $user->puntos));
     }
 }

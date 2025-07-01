@@ -43,4 +43,8 @@ class Reciclador extends Model
     {
         return $this->hasOne(AuthUser::class, 'profile_id')->where('role', 'reciclador');
     }
+    public function setNameAttribute($value)
+    {
+        $this->attributes['name'] = ucwords(strtolower($value));
+    }
 }

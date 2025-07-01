@@ -68,7 +68,7 @@ return new class extends Migration
             $table->decimal('fomix_precio', 10, 2)->nullable();
             $table->decimal('polipropileno_kilos', 10, 2)->nullable();
             $table->decimal('polipropileno_precio', 10, 2)->nullable();
-
+            $table->json('archivos_adjuntos')->nullable();
             $table->timestamps();
         });
     }

@@ -15,6 +15,7 @@ class CalificarReciclador extends Controller
         $validator = Validator::make($request->all(), [
             'solicitud_id' => 'required|integer|exists:solicitudes_recoleccion,id',
             'calificacion' => 'required|integer|min:0|max:5',
+            'comentario_ciudadano' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -48,6 +49,7 @@ class CalificarReciclador extends Controller
 
             // Guardar calificación
             $solicitud->calificacion_reciclador = $request->calificacion;
+            $solicitud->comentario_ciudadano = $request->comentario_ciudadano;
             $solicitud->save();
 
             return response()->json([

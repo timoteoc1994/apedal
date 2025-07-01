@@ -25,6 +25,7 @@ class SolicitudRecoleccion extends Model
         'longitud',
         'peso_total',
         'imagen',
+        'foto_ubicacion',
         'estado', // pendiente, asignado, en_camino, completado, cancelado
         'fecha_completado',
         'comentarios',
@@ -34,6 +35,8 @@ class SolicitudRecoleccion extends Model
         'calificacion_reciclador',
         'calificacion_ciudadano',
         'peso_total_revisado',
+        'comentario_reciclador',
+        'comentario_ciudadano',
     ];
 
     protected $casts = [

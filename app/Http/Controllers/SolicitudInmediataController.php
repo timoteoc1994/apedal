@@ -28,6 +28,8 @@ class SolicitudInmediataController extends Controller
      */
     public function buscarRecicladores(Request $request)
     {
+        Log::info('datos del request: ' . json_encode($request->all()));
+
         try {
             // Validar los datos de la solicitud
             $validatedData = $request->validate([
@@ -39,6 +41,7 @@ class SolicitudInmediataController extends Controller
                 'materiales' => 'required|json',
                 'imagenes.*' => 'required|image|mimes:jpeg,png,jpg|max:2048',
                 'es_inmediata' => 'required', // Verificar que sea una solicitud inmediata
+                'foto_ubicacion' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             ]);
             $validatedData['es_inmediata'] = filter_var($validatedData['es_inmediata'], FILTER_VALIDATE_BOOLEAN);
 
@@ -54,6 +57,13 @@ class SolicitudInmediataController extends Controller
                     $rutaImagen = $imagen->storeAs('solicitudes', $nombreImagen, 'public');
                     $rutasImagenes[] = $rutaImagen;
                 }
+            }
+            // Guardar la foto de ubicación si existe
+            $rutaFotoUbicacion = null;
+            if ($request->hasFile('foto_ubicacion')) {
+                $fotoUbicacion = $request->file('foto_ubicacion');
+                $nombreFotoUbicacion = time() . '_ubicacion_' . Auth::id() . '.' . $fotoUbicacion->getClientOriginalExtension();
+                $rutaFotoUbicacion = $fotoUbicacion->storeAs('solicitudes', $nombreFotoUbicacion, 'public');
             }
 
 
@@ -74,9 +84,11 @@ class SolicitudInmediataController extends Controller
                 'longitud' => $validatedData['longitud'],
                 'peso_total' => $validatedData['peso_total'],
                 'imagen' => json_encode($rutasImagenes), // Guardar array de rutas en formato JSON
+                'foto_ubicacion' => $rutaFotoUbicacion, // Guardar la ruta de la foto de ubicación
                 'estado' => 'buscando_reciclador', // Estado especial para solicitudes inmediatas
                 'ciudad' => $user->ciudadano->ciudad ?? 'No especificada',
                 'es_inmediata' => $validatedData['es_inmediata'], // Establecer como solicitud inmediata
+                
             ]);
 
             // Guardar materiales
@@ -179,7 +191,7 @@ class SolicitudInmediataController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error al procesar la solicitussssd: ' . $e->getMessage(),
+                'message' => 'Error al procesar la solicitus: ' . $e->getMessage(),
             ], 500);
         }
     }
