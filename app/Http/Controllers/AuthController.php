@@ -100,6 +100,12 @@ class AuthController extends Controller
                 // Convertir arrays a JSON
     $profileData['dias_atencion'] = json_encode($profileData['dias_atencion']);
     $profileData['materiales_aceptados'] = json_encode($profileData['materiales_aceptados']);
+                
+    // Generar un color claro aleatorio
+$r = rand(180, 255);
+$g = rand(180, 255);
+$b = rand(180, 255);
+$profileData['color'] = sprintf("#%02x%02x%02x", $r, $g, $b); // Ejemplo: #f4e3c2
 
                 $profile = Asociacion::create($profileData);
             }

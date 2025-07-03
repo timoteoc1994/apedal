@@ -1,262 +1,235 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import { Head, router } from '@inertiajs/vue3'
-import AppLayout from '@/layouts/AppLayout.vue'
-import Swal from 'sweetalert2'
-import axios from 'axios'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
-import {
-  PlusIcon,
-  SearchIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  PencilIcon,
-  TrashIcon,
-} from 'lucide-vue-next'
-import { type BreadcrumbItem } from '@/types'
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { type BreadcrumbItem } from '@/types';
+import { Head, router, Link } from '@inertiajs/vue3';
+import axios from 'axios';
+import { ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon } from 'lucide-vue-next';
+// Ordenamiento
+const headers = [
+    { key: 'name', label: 'Nombre' },
+    { key: 'puntos', label: 'Puntos' },
+    { key: 'telefono', label: 'Teléfono' },
+    { key: 'ciudad', label: 'Ciudad' },
+];
+const sort = ref('puntos');
+const direction = ref('desc');
+
+const ordenarPor = (campo: string) => {
+    let newDirection = 'asc';
+    if (sort.value === campo && direction.value === 'asc') {
+        newDirection = 'desc';
+    }
+    sort.value = campo;
+    direction.value = newDirection;
+    router.get(props.ciudadanos.path, {
+        search: filtro.value,
+        sort: campo,
+        direction: newDirection,
+    }, { preserveState: true, replace: true });
+};
+import Swal from 'sweetalert2';
+import { computed, ref, watch } from 'vue';
 
 // Props Inertia con paginación
 const props = defineProps<{
-  ciudadanos: {
-    data: any[]
-    total: number
-    per_page: number
-    current_page: number
-    last_page: number
-    path: string
-  }
-}>()
+    ciudadanos: {
+        data: any[];
+        total: number;
+        per_page: number;
+        current_page: number;
+        last_page: number;
+        path: string;
+    };
+}>();
 
 // Estado local y búsqueda
-const ciudadanosLocal = ref([...props.ciudadanos.data])
-const filtro = ref('')
+const ciudadanosLocal = ref([...props.ciudadanos.data]);
+const filtro = ref('');
 
 // Al cambiar el filtro, consulta al backend con ?search=valor
 watch(filtro, (val) => {
-  router.get(
-    props.ciudadanos.path,
-    { search: val },
-    { preserveState: true, replace: true }
-  )
-})
+    router.get(props.ciudadanos.path, { search: val }, { preserveState: true, replace: true });
+});
 
 // Paginación
-const currentPage = computed(() => props.ciudadanos.current_page)
-const totalPages = computed(() => props.ciudadanos.last_page)
-const displayedPages = computed(() =>
-  Array.from({ length: totalPages.value }, (_, i) => i + 1)
-)
+const currentPage = computed(() => props.ciudadanos.current_page);
+const totalPages = computed(() => props.ciudadanos.last_page);
+const displayedPages = computed(() => Array.from({ length: totalPages.value }, (_, i) => i + 1));
 const goToPage = (page: number) => {
-  if (page >= 1 && page <= totalPages.value) {
-    router.get(
-      props.ciudadanos.path,
-      { page, search: filtro.value },
-      { preserveState: true, replace: true }
-    )
-  }
-}
+    if (page >= 1 && page <= totalPages.value) {
+        router.get(props.ciudadanos.path, { page, search: filtro.value }, { preserveState: true, replace: true });
+    }
+};
 
 // Mantener data local actualizada al cambiar props
 watch(
-  () => props.ciudadanos.data,
-  newVal => { ciudadanosLocal.value = [...newVal] }
-)
+    () => props.ciudadanos.data,
+    (newVal) => {
+        ciudadanosLocal.value = [...newVal];
+    },
+);
 
 // Breadcrumbs y navegación
-const breadcrumbs: BreadcrumbItem[] = [
-  { title: 'Ciudadanos', href: '/ciudadanos' },
-]
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Ciudadanos', href: '/ciudadanos' }];
 const createCiudadano = () => {
     window.location.href = '/crear-ciudadano';
 };
-const editCiudadano = (id: number) => { router.get(`/ciudadanos/${id}/editar`) }
+const editCiudadano = (id: number) => {
+    router.get(`/ciudadanos/${id}/editar`);
+};
 
 // Eliminar ciudadano
 const deleteCiudadano = async (id: number) => {
-  const { isConfirmed } = await Swal.fire({
-    title: '¿Estás seguro?',
-    text: 'Esta acción no se puede deshacer.',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#d33',
-    cancelButtonColor: '#3085d6',
-    confirmButtonText: 'Eliminar',
-    cancelButtonText: 'Cancelar',
-  })
-  if (!isConfirmed) return
+    const { isConfirmed } = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: 'Esta acción no se puede deshacer.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Eliminar',
+        cancelButtonText: 'Cancelar',
+    });
+    if (!isConfirmed) return;
 
-  try {
-    await axios.delete(`/ciudadanos/${id}`)
-    Swal.fire('¡Eliminado!', 'El ciudadano ha sido eliminado.', 'success')
-    ciudadanosLocal.value = ciudadanosLocal.value.filter(c => c.id !== id)
-  } catch {
-    Swal.fire('Error', 'No se pudo eliminar. Intenta de nuevo.', 'error')
-  }
-}
+    try {
+        await axios.delete(`/ciudadanos/${id}`);
+        Swal.fire('¡Eliminado!', 'El ciudadano ha sido eliminado.', 'success');
+        ciudadanosLocal.value = ciudadanosLocal.value.filter((c) => c.id !== id);
+    } catch {
+        Swal.fire('Error', 'No se pudo eliminar. Intenta de nuevo.', 'error');
+    }
+};
 </script>
 
 <template>
-  <Head title="Ciudadanos" />
-
-  <AppLayout :breadcrumbs="breadcrumbs">
-    <div class="flex h-full flex-1 flex-col gap-4 p-4">
-      <div class="rounded-xl bg-white dark:bg-gray-900 shadow-md border border-gray-200 dark:border-gray-700 p-8">
-        <div class="max-w-6xl mx-auto">
-
-          <!-- Header: Título + Botón Crear -->
-          <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
-              Listado de Ciudadanos
-            </h1>
-            <Dialog>
-              <DialogTrigger as-child>
-                <button
-                  class="flex items-center rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 font-medium text-white shadow-md transition-transform hover:scale-105 hover:from-purple-700 hover:to-indigo-700"
-                  @click="createCiudadano"
+    <Head title="Ciudadanos" />
+    <AuthenticatedLayout>
+        <template #header> Ciudadanos </template>
+        <div class="mt-6 rounded-xl bg-white p-8 shadow-xl">
+            <!-- Botón Crear Ciudadano -->
+            <div class="mb-4 flex justify-end">
+               <!--  <button
+                    @click="createCiudadano"
+                    class="text-2sm flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-2 font-semibold text-white shadow-lg transition-all duration-300 hover:from-indigo-700 hover:to-purple-700"
                 >
-                  <PlusIcon class="mr-2 h-5 w-5" />
-                  Crear Ciudadano
-                </button>
-              </DialogTrigger>
-            </Dialog>
-          </div>
+                    <PlusIcon class="text-2xl" /> Crear Ciudadano
+                </button> -->
+            </div>
+            <!-- Barra de búsqueda -->
+            <div class="relative mb-8">
+                <input
+                    type="text"
+                    v-model="filtro"
+                    @keyup.enter="() => goToPage(1)"
+                    placeholder="Buscar ciudadanos..."
+                    class="w-full rounded-lg border border-gray-300 py-3 pl-12 pr-4 text-gray-700 shadow focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                />
+                <SearchIcon class="absolute left-4 top-3 h-5 w-5 text-indigo-400" />
+            </div>
 
-          <!-- Buscador full-width -->
-          <div class="relative mb-8">
-            <SearchIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              v-model="filtro"
-              type="text"
-              placeholder="Buscar por nombre..."
-              class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:ring-purple-800"
-            />
-          </div>
-
-          <!-- Estado: sin datos -->
-          <div
-            v-if="!ciudadanosLocal.length"
-            class="text-center text-lg text-red-600 bg-red-100 p-4 rounded-md mb-6"
-          >
-            No hay ciudadanos disponibles.
-          </div>
-
-          <!-- Tabla -->
-          <div
-            v-else
-            class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700"
-          >
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                    Nombre
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                    Teléfono
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                    Dirección
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                    Ciudad
-                  </th>
-                  <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="bg-white dark:bg-gray-900">
-                <tr
-                  v-for="c in ciudadanosLocal"
-                  :key="c.id"
-                  class="odd:bg-gray-50 even:bg-white dark:odd:bg-gray-800 dark:even:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                    {{ c.name }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                    {{ c.telefono }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                    {{ c.direccion }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                    {{ c.ciudad }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end space-x-2">
+            <!-- Tabla -->
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[700px] text-left text-sm text-gray-700">
+                    <thead class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+                        <tr>
+                            <th
+                                v-for="header in headers"
+                                :key="header.key"
+                                @click="ordenarPor(header.key)"
+                                class="px-6 py-4 font-semibold uppercase tracking-wider cursor-pointer select-none transition hover:bg-indigo-600"
+                            >
+                                <div class="flex items-center gap-1">
+                                    {{ header.label }}
+                                    <span v-if="sort === header.key">
+                                        <ChevronUpIcon v-if="direction === 'asc'" class="inline h-4 w-4" />
+                                        <ChevronDownIcon v-else class="inline h-4 w-4" />
+                                    </span>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 text-right font-semibold uppercase tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-if="!ciudadanosLocal.length">
+                            <td :colspan="5" class="px-6 py-6 text-center text-gray-400">No se encontraron ciudadanos.</td>
+                        </tr>
+                        <tr v-for="c in ciudadanosLocal" :key="c.id" class="transition hover:bg-indigo-50">
+                            <td class="flex items-center gap-3 px-6 py-4 font-medium">
+                                <img v-if="c.logo_url" :src="c.logo_url" class="h-8 w-8 rounded-full object-cover" alt="Logo" />
+                                <img
+                                    v-else
+                                    src="https://e7.pngegg.com/pngimages/836/345/png-clipart-ecole-centrale-de-lyon-organization-solidarity-humanitarian-aid-voluntary-association-student-people-area-thumbnail.png"
+                                    class="h-8 w-8 rounded-full object-cover"
+                                    alt="Logo"
+                                />
+                                {{ c.name }} ({{ c.nickname }})
+                            </td>
+                            <td class="px-6 py-4">{{ c.puntos }} </td>
+                            <td class="px-6 py-4">{{ c.telefono }}</td>
+                            
+                            <td class="px-6 py-4">{{ c.ciudad }}</td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex justify-end gap-2">
+                                     <Link :href="route('ciudadano.perfil', c.id)"
+                                        class="text-indigo-600 hover:text-indigo-900 hover:scale-105"
+                                        title="Ver">
+                                        <EyeIcon class="h-5 w-5" />
+                                    </Link>
+                                    <button @click="editCiudadano(c.id)" class="text-indigo-600 hover:scale-105 hover:text-indigo-900" title="Editar">
+                                        <PencilIcon class="h-5 w-5" />
+                                    </button>
+                                    <button @click="deleteCiudadano(c.id)" class="text-red-600 hover:scale-105 hover:text-red-900" title="Eliminar">
+                                        <TrashIcon class="h-5 w-5" />
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Paginación -->
+            <div class="mt-8 flex flex-col items-center justify-between gap-4 sm:flex-row">
+                <div class="text-sm text-gray-600">
+                    Mostrando
+                    <span class="font-semibold">{{ (currentPage - 1) * props.ciudadanos.per_page + 1 }}</span>
+                    a
+                    <span class="font-semibold">{{ Math.min(currentPage * props.ciudadanos.per_page, props.ciudadanos.total) }}</span>
+                    de
+                    <span class="font-semibold">{{ props.ciudadanos.total }}</span>
+                    resultados
+                </div>
+                <div class="flex items-center gap-1">
                     <button
-                      @click="editCiudadano(c.id)"
-                      class="text-indigo-600 hover:text-indigo-900 transition"
-                      title="Editar"
+                        @click="goToPage(currentPage - 1)"
+                        :disabled="currentPage === 1"
+                        class="rounded-md bg-gray-100 px-3 py-1 text-gray-400 transition hover:bg-gray-200 disabled:opacity-50"
                     >
-                      <PencilIcon class="h-5 w-5" />
+                        <ChevronLeftIcon class="h-5 w-5" />
                     </button>
                     <button
-                      @click="deleteCiudadano(c.id)"
-                      class="text-red-600 hover:text-red-900 transition"
-                      title="Eliminar"
+                        v-for="page in displayedPages"
+                        :key="page"
+                        @click="goToPage(page)"
+                        class="rounded-md px-3 py-1"
+                        :class="{
+                            'bg-indigo-600 text-white': currentPage === page,
+                            'bg-white text-gray-700 hover:bg-indigo-100': currentPage !== page,
+                        }"
                     >
-                      <TrashIcon class="h-5 w-5" />
+                        {{ page }}
                     </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Paginación -->
-          <div class="mt-6 flex flex-col items-center justify-between sm:flex-row">
-            <div class="mb-4 text-sm text-gray-700 dark:text-gray-300 sm:mb-0">
-              Mostrando
-              <span class="font-medium">{{ (currentPage - 1) * props.ciudadanos.per_page + 1 }}</span>
-              a
-              <span class="font-medium">{{ Math.min(currentPage * props.ciudadanos.per_page, props.ciudadanos.total) }}</span>
-              de
-              <span class="font-medium">{{ props.ciudadanos.total }}</span>
-              resultados
+                    <button
+                        @click="goToPage(currentPage + 1)"
+                        :disabled="currentPage === totalPages"
+                        class="rounded-md bg-gray-100 px-3 py-1 text-gray-400 transition hover:bg-gray-200 disabled:opacity-50"
+                    >
+                        <ChevronRightIcon class="h-5 w-5" />
+                    </button>
+                </div>
             </div>
-            <div class="flex items-center space-x-2">
-              <button
-                @click="goToPage(currentPage - 1)"
-                :disabled="currentPage === 1"
-                class="rounded-md px-3 py-1 transition"
-                :class="{
-                  'opacity-50 cursor-not-allowed': currentPage === 1,
-                  'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700': currentPage > 1
-                }"
-              >
-                <ChevronLeftIcon class="h-5 w-5" />
-              </button>
-              <button
-                v-for="page in displayedPages"
-                :key="page"
-                @click="goToPage(page)"
-                class="rounded-md px-3 py-1 transition"
-                :class="{
-                  'bg-purple-600 text-white ring-2 ring-purple-600': currentPage === page,
-                  'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700': currentPage !== page
-                }"
-              >
-                {{ page }}
-              </button>
-              <button
-                @click="goToPage(currentPage + 1)"
-                :disabled="currentPage === totalPages"
-                class="rounded-md px-3 py-1 transition"
-                :class="{
-                  'opacity-50 cursor-not-allowed': currentPage === totalPages,
-                  'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700': currentPage < totalPages
-                }"
-              >
-                <ChevronRightIcon class="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
         </div>
-      </div>
-    </div>
-  </AppLayout>
+    </AuthenticatedLayout>
 </template>
 
 <style scoped>

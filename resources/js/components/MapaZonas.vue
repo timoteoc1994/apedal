@@ -57,7 +57,7 @@
             <div class="grid gap-2">
                 <div v-for="asociacion in asociacionesUnicas" :key="asociacion.id" class="flex items-center gap-2">
                     <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: asociacion.color }"></div>
-                    <span>{{ asociacion.name }}</span>
+                    <span class="text-black">{{ asociacion.name }}</span>
                 </div>
             </div>
 

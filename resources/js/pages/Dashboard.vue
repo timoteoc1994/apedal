@@ -1,26 +1,20 @@
-<script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
-import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/vue3';
-
-
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Dashboard',
-        href: '/dashboard',
-    },
-];
-</script>
-
 <template>
     <Head title="Dashboard" />
 
-    <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-            
-            <div class="bg-white p-5 relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border md:min-h-min">
-                <p>Hola</p>
+    <AuthenticatedLayout>
+        <template #header>
+            Dashboard
+        </template>
+
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="p-6 border-b border-gray-200">
+                <!-- Contenido -->
             </div>
         </div>
-    </AppLayout>
+    </AuthenticatedLayout>
 </template>
+
+<script setup>
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import { Head } from '@inertiajs/vue3';
+</script>

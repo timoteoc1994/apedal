@@ -1,44 +1,56 @@
 <?php
 
+use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AsociacionController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\ProfileController;
+use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Http\Controllers\ViewAsociationController;
 use App\Http\Controllers\CityController;
-use App\Http\Controllers\ZonaController;
-use App\Http\Controllers\CiudadanoController; 
-use App\Http\Controllers\RecicladorController;
-use App\Http\Controllers\SolicitudRecoleccionController;
-use App\Events\EnviarMensaje;
-use App\Http\Controllers\AutoMessageController;
-use App\Http\Controllers\Prueba;
-use Illuminate\Support\Facades\Broadcast;
-use Illuminate\Support\Facades\Redis;
-use App\Http\Controllers\TrackingController;
-use App\Http\Controllers\AppVersionController;
+use App\Http\Controllers\CiudadanoController;
+use App\Http\Controllers\NotificacionPush;
 use App\Http\Controllers\PuntosController;
+use App\Http\Controllers\TrackingController;
+use App\Http\Controllers\ViewAsociationController;
+use App\Http\Controllers\ZonaController;
 
-// Ruta para autenticación de canales (debe estar en web.php, no en api.php)
-Broadcast::routes(['middleware' => ['auth:sanctum']]);
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| contains the "web" middleware group. Now create something great!
+|
+*/
 
 Route::get('/', function () {
-    return Inertia::render('Welcome');
-})->name('home');
+    return Inertia::render('Welcome', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+        'laravelVersion' => Application::VERSION,
+        'phpVersion' => PHP_VERSION,
+    ]);
+});
 
-Route::get('dashboard', function () {
+Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-//disparar vento para actualizar cambios en la solcitudes
-Route::get('/cambio', [Prueba::class, 'index']);
+Route::middleware('auth')->group(function () {
+    Route::get('/about', fn() => Inertia::render('About'))->name('about');
 
-Route::middleware(['auth'])->group(function () {
-    Route::get('/asociation', [ViewAsociationController::class, 'index'])->name('asociation.index');
-    Route::get('/asociation/show/{id}', [ViewAsociationController::class, 'show'])->name('asociation.index.show');
-    Route::patch('/asociation/information', [ViewAsociationController::class, 'update'])->name('asociation.index.update');
-    Route::delete('/asociation_delete/{deudas}', [ViewAsociationController::class, 'delete'])->name('asociation.index.delete');
+    Route::get('users', [UserController::class, 'index'])->name('users.index');
 
-    //crud ciudades
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+
+
+    //ruta ciudades
     Route::get('/ciudad', [CityController::class, 'index'])->name('ciudad.index');
     Route::post('/ciudad/nuevo', [CityController::class, 'store'])->name('ciudad.index.nuevo');
     Route::delete('/ciudad_delete/{deudas}', [CityController::class, 'delete'])->name('ciudad.index.delete');
@@ -53,8 +65,29 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/zonas', [ZonaController::class, 'obtenerZonas'])->name('api.zonas');
 
     //para las asociasiones
-    Route::post('/asociations', [AsociacionController::class, 'store'])->name('asociation.store');
-    Route::delete('/asociacion/{id}', [AsociacionController::class, 'eliminarAsociacion'])->name('asociation.index.delete');
+    Route::get('/asociation', [ViewAsociationController::class, 'index'])->name('asociation.index');
+    Route::get('/asociation/perfil/{id}', [ViewAsociationController::class, 'perfil'])->name('asociation.index.perfil');
+    Route::get('/asociation/{id}/recicladores', [ViewAsociationController::class, 'recicladores'])->name('asociation.index.recicladores');
+    Route::get('/asociation/{id}/recicladoresperfil', [ViewAsociationController::class, 'recicladoresperfil'])->name('asociation.index.recicladoresperfil');
+    Route::get('/asociation/show/{id}', [ViewAsociationController::class, 'show'])->name('asociation.index.show');
+    Route::get('/asociation/show/recicladores/{id}', [ViewAsociationController::class, 'showrecicladores'])->name('asociation.index.show.recicladores');
+    Route::patch('/asociation/information', [ViewAsociationController::class, 'update'])->name('asociation.index.update');
+    Route::patch('/asociation/information/recicladores', [ViewAsociationController::class, 'updaterecicladores'])->name('asociation.index.update.recicladores');
+    Route::delete('/asociation_delete/{deudas}', [ViewAsociationController::class, 'delete'])->name('asociation.index.delete');
+    Route::delete('/asociation_delete/reciclador/{deudas}', [ViewAsociationController::class, 'deletereciclador'])->name('asociation.index.reciclador.delete');
+
+    // Ruta para mostrar la lista de ciudadanos
+    Route::get('/ciudadanos', [CiudadanoController::class, 'index'])->name('ciudadano.index');
+    // Ruta para mostrar perfil de ciudadano
+    Route::get('/ciudadanos/{id}', [CiudadanoController::class, 'perfil_ciudadano'])->name('ciudadano.perfil');
+    // Ruta para eliminar un ciudadano
+    Route::delete('/ciudadanos/{id}', [CiudadanoController::class, 'deleteCiudadano'])->name('ciudadano.delete');
+    // Ruta para mostrar el formulario de edición
+    // Ruta para mostrar el formulario de edición de ciudadano
+    Route::get('/ciudadanos/{id}/editar', [CiudadanoController::class, 'edit'])->name('ciudadano.edit');
+
+    // Ruta para procesar la actualización de ciudadano
+    Route::put('/ciudadanos/{id}', [CiudadanoController::class, 'update'])->name('ciudadano.update');
 
     //crud para version
     Route::get('/versiones', [AppVersionController::class, 'index'])->name('versions.index');
@@ -65,135 +98,15 @@ Route::middleware(['auth'])->group(function () {
 
     //rutas puntos
     Route::get('/puntos', [PuntosController::class, 'edit'])->name('puntos.edit');
-Route::put('/puntos', [PuntosController::class, 'update'])->name('puntos.update');
-Route::post('/puntos', [PuntosController::class, 'store'])->name('puntos.store');
+    Route::put('/puntos', [PuntosController::class, 'update'])->name('puntos.update');
+    Route::post('/puntos', [PuntosController::class, 'store'])->name('puntos.store');
 
-
-    // Ruta para procesar la creación del ciudadano y usuario
-    Route::post('/crear-ciudadano', [CiudadanoController::class, 'createCiudadano'])->name('ciudadano.create');
-
-    // Ruta para mostrar la lista de ciudadanos
-    Route::get('/ciudadanos', [CiudadanoController::class, 'index'])->name('ciudadano.index');
-// Ruta para eliminar un ciudadano
-Route::delete('/ciudadanos/{id}', [CiudadanoController::class, 'deleteCiudadano'])->name('ciudadano.delete');
-// Ruta para mostrar el formulario de edición
-// Ruta para mostrar el formulario de edición de ciudadano
-Route::get('/ciudadanos/{id}/editar', [CiudadanoController::class, 'edit'])->name('ciudadano.edit');
-
-// Ruta para procesar la actualización de ciudadano
-Route::put('/ciudadanos/{id}', [CiudadanoController::class, 'update'])->name('ciudadano.update');
-
-
-
-Route::get('/recicladores', [RecicladorController::class, 'index'])->name('reciclador.index');
-
-// Guardar el nuevo reciclador
-Route::post('/crear-reciclador', [RecicladorController::class, 'storeReciclador'])
-     ->name('reciclador.store');
-     
-Route::get('/crear-reciclador', [RecicladorController::class, 'createReciclador'])->name('reciclador.create');
-Route::delete('/recicladores/{id}', [RecicladorController::class, 'deleteReciclador'])->name('reciclador.delete');
-
-Route::get('/recicladores/{id}/editar', [RecicladorController::class, 'editReciclador'])->name('reciclador.edit');
-Route::put('/recicladores/{id}', [RecicladorController::class, 'updateReciclador'])->name('reciclador.update');
-
-
-//solicitudes
-Route::get('/solicitudes', [SolicitudRecoleccionController::class, 'listar'])
-    ->name('solicitud.listar');  
-
-});
-
-Route::get('/auto-message', [AutoMessageController::class, 'index']);
-
-Route::get('/test-solicitud-evento', function () {
-    // Crear datos de prueba similares a tu solicitud
-    $solicitudPrueba = [
-        'id' => 999,
-        'direccion' => 'Dirección de prueba',
-        'referencia' => 'Cerca del parque',
-        'estado' => 'buscando_reciclador',
-        'peso_total' => 10,
-        'latitud' => -1.23456,
-        'longitud' => -78.98765,
-        'created_at' => now(),
-        'user' => [
-            'id' => 1,
-            'name' => 'Usuario Prueba',
-            'ciudadano' => [
-                'telefono' => '0999999999'
-            ]
-        ],
-        'materiales' => [
-            ['tipo' => 'Plástico', 'peso' => 5],
-            ['tipo' => 'Cartón', 'peso' => 5]
-        ]
-    ];
-
-    $recicladorId = 3; // ID del reciclador que estás probando
-
-    // Disparar el evento
-    \App\Events\NuevaSolicitudInmediata::dispatch((object)$solicitudPrueba, $recicladorId);
-
-    return response()->json([
-        'message' => 'Evento de prueba disparado',
-        'canal' => 'reciclador-' . $recicladorId
-    ]);
-});
-
-// routes/web.php
-Route::get('/test-redis', function () {
-    try {
-        // Test conexión
-        Redis::ping();
-
-        // Guardar dato
-        Redis::set('saludo', 'Hola desde Laravel y Redis!');
-
-        // Leer dato
-        $valor = Redis::get('saludo');
-
-        return "Redis funcionando! Valor: " . $valor;
-    } catch (\Exception $e) {
-        return "Error: " . $e->getMessage();
-    }
+    //Notificacion push
+    Route::get('/notificacionpush', [NotificacionPush::class, 'index'])->name('notificacionpush.create');
+    Route::post('/notificaciones/enviar', [NotificacionPush::class, 'enviar'])->name('notificacionpush.enviar');
 });
 
 Route::get('/tracking/{id?}', [TrackingController::class, 'show'])->name('tracking.show');
 
-Route::get('/test-redis-save/{id?}', function ($id = 3) {
-    // Intentar guardar datos de prueba
-    $testData = [
-        'auth_user_id' => $id,
-        'latitude' => -1.2491,
-        'longitude' => -78.6167,
-        'timestamp' => now()->toIso8601String(),
-        'status' => 'disponible',
-        'updated_at' => now()->toIso8601String(),
-    ];
 
-    try {
-        // Guardar en Redis
-        $key = "recycler:location:{$id}";
-        Redis::setex($key, 300, json_encode($testData));
-
-        // Verificar que se guardó
-        $saved = Redis::get($key);
-
-        return response()->json([
-            'message' => 'Prueba de Redis',
-            'key' => $key,
-            'data_enviado' => $testData,
-            'data_guardado' => json_decode($saved, true),
-            'redis_activo' => Redis::ping(),
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ], 500);
-    }
-});
-
-require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';

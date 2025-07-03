@@ -1,15 +1,90 @@
+<template>
+  <Head title="Configuración de Puntos" />
+
+  <AuthenticatedLayout>
+    <template #header>
+      Configuración de Puntos
+    </template>
+
+    <div class="bg-white overflow-hidden shadow-xl rounded-xl p-8 mt-6 max-w-2xl mx-auto">
+      <!-- Tarjeta informativa -->
+      <div class="mb-8 p-4 bg-indigo-50 border-l-4 border-indigo-400 rounded">
+        <h2 class="font-bold text-indigo-700 mb-1">¿Cómo funciona la fecha de puntos promocionales?</h2>
+        <p class="text-gray-700 text-sm">
+          La <span class="font-semibold">fecha hasta</span> indica el último día en que los usuarios podrán recibir los <span class="font-semibold">puntos de registro promocional</span>. 
+          Después de esa fecha, solo se otorgarán los puntos normales por reciclaje y referidos.
+        </p>
+      </div>
+
+      <form @submit.prevent="guardar" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block font-medium mb-1 text-gray-700">Fecha hasta <span class="text-indigo-600">*</span></label>
+            <input
+              type="date"
+              v-model="form.fecha_hasta"
+              class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+            <p class="text-xs text-gray-500 mt-1">Hasta esta fecha se entregan puntos promocionales por registro.</p>
+          </div>
+          <div>
+            <label class="block font-medium mb-1 text-gray-700">Puntos registro promocional <span class="text-indigo-600">*</span></label>
+            <input
+              type="number"
+              v-model="form.puntos_registro_promocional"
+              min="0"
+              class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+            <p class="text-xs text-gray-500 mt-1">Puntos que recibe un usuario al registrarse antes de la fecha indicada.</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block font-medium mb-1 text-gray-700">Puntos reciclado normal <span class="text-indigo-600">*</span></label>
+            <input
+              type="number"
+              v-model="form.puntos_reciclado_normal"
+              min="0"
+              class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+            <p class="text-xs text-gray-500 mt-1">Puntos por cada reciclaje realizado.</p>
+          </div>
+          <div>
+            <label class="block font-medium mb-1 text-gray-700">Puntos reciclado referido <span class="text-indigo-600">*</span></label>
+            <input
+              type="number"
+              v-model="form.puntos_reciclado_referido"
+              min="0"
+              class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+            <p class="text-xs text-gray-500 mt-1">Puntos extra por reciclaje de un usuario referido.</p>
+          </div>
+        </div>
+        <div class="flex justify-end">
+          <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700 font-semibold shadow">
+            Guardar
+          </button>
+        </div>
+        <div v-if="success" class="mt-4 p-3 rounded bg-green-100 text-green-800 border border-green-300 text-center">
+          {{ success }}
+        </div>
+      </form>
+    </div>
+  </AuthenticatedLayout>
+</template>
+
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
-import { type BreadcrumbItem } from '@/types';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
-// Define el tipo para flash
 interface FlashProps {
   success?: string;
 }
-
-// Define el tipo para los props de la página
 interface PageProps {
   flash?: FlashProps;
 }
@@ -18,14 +93,8 @@ const props = defineProps({
   puntos: Object
 });
 
-// Usa el tipo en usePage
 const page = usePage<PageProps>();
 const success = computed(() => page.props.flash?.success ?? '');
-
-const breadcrumbs: BreadcrumbItem[] = [
-  { title: 'Dashboard', href: '/dashboard' },
-  { title: 'Configuración de Puntos', href: '/puntos' },
-];
 
 const form = ref({
   fecha_hasta: props.puntos?.fecha_hasta ?? '',
@@ -42,43 +111,3 @@ const guardar = () => {
   }
 };
 </script>
-<template>
-  <Head title="Configuración de Puntos" />
-  <AppLayout :breadcrumbs="breadcrumbs">
-    <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-      <div class="bg-white p-5 relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border md:min-h-min">
-        <h2 class="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Configuración de Puntos</h2>
-        <div v-if="success" class="mb-4 p-3 rounded bg-green-100 text-green-800 border border-green-300">
-          {{ success }}
-        </div>
-        <form @submit.prevent="guardar" class="space-y-4 max-w-xl">
-          <div>
-            <label class="block font-medium">Fecha hasta</label>
-            <input type="date" v-model="form.fecha_hasta" class="input" />
-          </div>
-          <div>
-            <label class="block font-medium">Puntos registro promocional</label>
-            <input type="number" v-model="form.puntos_registro_promocional" class="input" />
-          </div>
-          <div>
-            <label class="block font-medium">Puntos reciclado normal</label>
-            <input type="number" v-model="form.puntos_reciclado_normal" class="input" />
-          </div>
-          <div>
-            <label class="block font-medium">Puntos reciclado referido</label>
-            <input type="number" v-model="form.puntos_reciclado_referido" class="input" />
-          </div>
-          <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
-            Guardar
-          </button>
-        </form>
-      </div>
-    </div>
-  </AppLayout>
-</template>
-
-<style scoped>
-.input {
-  @apply w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500;
-}
-</style>

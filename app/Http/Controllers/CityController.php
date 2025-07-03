@@ -10,24 +10,26 @@ class CityController extends Controller
 {
 
     public function index(Request $request)
-    {
-        $search = $request->search;
+{
+    $query = City::query();
 
-        $cities = city::query()
-            ->when($search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'LIKE', "%{$search}%");
-                });
-            })
-            ->paginate(10);
-
-
-
-        return Inertia::render('city/index', [
-            'cities' => $cities,
-            'filters' => $request->only(['search'])
-        ]);
+    // Filtro de búsqueda
+    if ($request->filled('search')) {
+        $query->where('name', 'like', '%' . $request->search . '%');
     }
+
+    // Ordenamiento
+    $sort = $request->get('sort', 'name');
+    $direction = $request->get('direction', 'asc');
+    $query->orderBy($sort, $direction);
+
+    $cities = $query->paginate(10)->withQueryString();
+
+    return Inertia::render('city/index', [
+        'cities' => $cities,
+        'filters' => $request->only(['search', 'sort', 'direction']),
+    ]);
+}
 
     /**
      * Show the form for creating a new resource.
@@ -42,12 +44,14 @@ class CityController extends Controller
      */
     public function store(Request $request)
     {
+        
         //obtener la id del usuario autenticado
         $user = auth()->user()->id;
         //validar datos
         $datos = $request->validate([
             'name' => 'required|string|unique:cities,name|max:255',
         ]);
+        
         $datos['user_id'] = $user;
         City::create($datos);
         return redirect()->back()->with('success', 'Ciudad creada exitosamente');

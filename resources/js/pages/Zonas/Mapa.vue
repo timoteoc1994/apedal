@@ -1,34 +1,13 @@
-<script setup lang="ts">
-import MapaZonas from '@/components/MapaZonas.vue';
-import AppLayout from '@/layouts/AppLayout.vue';
-import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/vue3';
 
-// Definir props
-const props = defineProps({
-    zonas: Array,
-    asociaciones: Array,
-});
-
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Dashboard',
-        href: '/dashboard',
-    },
-];
-</script>
 
 <style>
 @import 'leaflet/dist/leaflet.css';
 @import 'leaflet-draw/dist/leaflet.draw.css';
 
 .mapa-fullscreen {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 100%;
+    position: relative;
+    height: 70vh;
+    min-height: 400px;
     width: 100%;
     z-index: 5;
 }
@@ -84,18 +63,37 @@ const breadcrumbs: BreadcrumbItem[] = [
 }
 </style>
 
-<template>
-    <Head title="Zonas por Asociación" />
 
-    <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="relative h-full w-full" style="height: calc(100vh - 64px);">
-            <!-- Mapa a pantalla completa -->
-            <MapaZonas 
-                :zonas="zonas" 
-                :asociaciones="asociaciones" 
-                class="mapa-fullscreen"
-                fullscreen-mode
-            />
-        </div>
-    </AppLayout>
+<template>
+    <Head title="Mapa de Zonas" />
+
+    <AuthenticatedLayout>
+        <template #header>
+            Mapa de Zonas
+        </template>
+
+                <div class="relative w-full h-[75vh] min-h-[400px]">
+                <MapaZonas 
+                    :zonas="zonas" 
+                    :asociaciones="asociaciones" 
+                    class="mapa-fullscreen"
+                    fullscreen-mode
+                />
+            </div>
+    </AuthenticatedLayout>
 </template>
+
+<script setup>
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import { Head } from '@inertiajs/vue3';
+import MapaZonas from '@/components/MapaZonas.vue';
+
+
+// Definir props
+const props = defineProps({
+    zonas: Array,
+    asociaciones: Array,
+});
+
+
+</script>

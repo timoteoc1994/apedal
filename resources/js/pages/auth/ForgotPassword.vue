@@ -1,16 +1,48 @@
-<script setup lang="ts">
-import InputError from '@/components/InputError.vue';
-import TextLink from '@/components/TextLink.vue';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import AuthLayout from '@/layouts/AuthLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
-import { LoaderCircle } from 'lucide-vue-next';
+<template>
+    <Head title="Forgot Password" />
 
-defineProps<{
-    status?: string;
-}>();
+    <GuestLayout>
+        <Link href="/" class="flex justify-center items-center mb-4">
+            <ApplicationLogo class="w-20 h-20 text-gray-500 fill-current" />
+        </Link>
+
+        <div class="mb-4 text-sm text-gray-600">
+            Forgot your password? No problem. Just let us know your email address and we will email you a password reset
+            link that will allow you to choose a new one.
+        </div>
+
+        <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
+            {{ status }}
+        </div>
+
+        <form @submit.prevent="submit">
+            <div>
+                <InputLabel for="email" value="Email" />
+                <TextInput id="email" type="email" class="block mt-1 w-full" v-model="form.email" required autofocus autocomplete="username" />
+                <InputError class="mt-2" :message="form.errors.email" />
+            </div>
+
+            <div class="flex justify-end items-center mt-4">
+                <PrimaryButton class="w-full" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+                    Email Password Reset Link
+                </PrimaryButton>
+            </div>
+        </form>
+    </GuestLayout>
+</template>
+
+<script setup>
+import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import GuestLayout from '@/Layouts/GuestLayout.vue';
+import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/InputLabel.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import TextInput from '@/Components/TextInput.vue';
+import { Head, useForm } from '@inertiajs/vue3';
+
+defineProps({
+    status: String,
+});
 
 const form = useForm({
     email: '',
@@ -20,35 +52,3 @@ const submit = () => {
     form.post(route('password.email'));
 };
 </script>
-
-<template>
-    <AuthLayout title="Olvidé mi contraseña" description="Ingrese su correo electrónico para recibir un enlace de restablecimiento de contraseña">
-        <Head title="Olvidé mi contraseña" />
-
-        <div v-if="status" class="mb-4 text-center text-sm font-medium text-green-600">
-            {{ status }}
-        </div>
-
-        <div class="space-y-6">
-            <form @submit.prevent="submit">
-                <div class="grid gap-2">
-                    <Label for="email">Correo electrónico</Label>
-                    <Input id="email" type="email" name="email" autocomplete="off" v-model="form.email" autofocus placeholder="email@example.com" />
-                    <InputError :message="form.errors.email" />
-                </div>
-
-                <div class="my-6 flex items-center justify-start">
-                    <Button class="w-full border-2 border-white bg-white text-[#6A69FD] hover:bg-[#6A69FD] hover:text-white hover:border-white hover:border-2 transition-all duration-300" :disabled="form.processing">
-                        <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
-                        Restablecer contraseña.
-                    </Button>
-                </div>
-            </form>
-
-            <div class="space-x-1 text-center text-sm text-muted-foreground">
-                <span class="text-gray-200">O bien, vuelve a </span>
-                <TextLink :href="route('login')">Iniciar Sesión</TextLink>
-            </div>
-        </div>
-    </AuthLayout>
-</template>

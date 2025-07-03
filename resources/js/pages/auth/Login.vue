@@ -1,91 +1,120 @@
-<script setup lang="ts">
-import InputError from '@/components/InputError.vue';
-import TextLink from '@/components/TextLink.vue';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import AuthBase from '@/layouts/AuthLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
-import { LoaderCircle } from 'lucide-vue-next';
+<template>
+    <Head title="Inciar sesión" />
 
-defineProps<{
-    status?: string;
-    canResetPassword: boolean;
-}>();
+    <!-- component -->
+    <div
+        class="flex h-screen w-full items-center justify-center  bg-cover bg-no-repeat"
+       style="background-color: #5849e2;"
+    >
+        <div
+            class="rounded-xl bg-gray-800 bg-opacity-50 px-16 py-10 shadow-lg backdrop-blur-md max-sm:px-8"
+        >
+            <div class="text-white">
+                <div class="mb-8 flex flex-col items-center pt-5">
+                     <img src="storage/plataforma/logoplataforma.png" width="200px" alt="">
+                     <div class="flex justify-center items-center space-x-1 pt-5">
+                        <span class="w-3 h-3 rounded-full bg-white inline-block"></span>
+                        <span class="w-3 h-3 rounded-full" style="background-color: #ffb000;"></span>
+                        <span class="w-3 h-3 rounded-full bg-green-400 inline-block"></span>
+                        <span class="w-3 h-3 rounded-full bg-pink-400 inline-block"></span>
+                    </div>
+                    <h1 class="mb-2 text-2xl">Iniciar Sesion</h1>
+                    <span class="text-gray-300 text-center leading-4">
+                        Ingresa tu correo electrónico y contraseña <br>
+                        a continuación para iniciar sesión.
+                    </span>
+                </div>
+                <form @submit.prevent="submit">
+                    <div class="mb-4 text-lg">
+                        <TextInput
+                            id="email"
+                            type="email"
+                            class="rounded-3xl border-none bg-white  px-6 py-2 text-center  placeholder-black-200 shadow-lg outline-none backdrop-blur-md"
+                            v-model="form.email"
+                            required
+                            autofocus
+                            autocomplete="username"
+                            placeholder="Correo electrónico"
+                        />
+                        <InputError class="mt-2" :message="form.errors.email" />
+                    </div>
+
+                    <div class="mb-4 text-lg">
+                        <div class="mt-3">
+                            <TextInput
+                                id="password"
+                                type="password"
+                                class="rounded-3xl border-none bg-white  text-black px-6 py-2 text-center  placeholder-black-200 shadow-lg outline-none backdrop-blur-md"
+                                v-model="form.password"
+                                required
+                                autocomplete="current-password"
+                                placeholder="Contraseña"
+                            />
+                            <InputError
+                                class="mt-2"
+                                :message="form.errors.password"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex justify-between">
+                        <label class="inline-flex items-center">
+                            <Checkbox
+                                name="remember"
+                                v-model:checked="form.remember"
+                            />
+                            <span class="mx-2 text-sm text-white"
+                                >Recuerdame</span
+                            >
+                        </label>
+
+                        <Link
+                            v-if="canResetPassword"
+                            :href="route('password.request')"
+                            class="text-sm text-white underline hover:text-gray-900"
+                        >
+                            Recuperar contraseña?
+                        </Link>
+                    </div>
+                    <div class="mt-8 flex justify-center text-lg text-black">
+                        <PrimaryButton
+                            class="rounded-3xl bg-white px-10 py-2 !text-black shadow-xl backdrop-blur-md transition-colors duration-300 hover:bg-indigo-600"
+                            :class="{ 'opacity-25': form.processing }"
+                            :disabled="form.processing"
+                        >
+                            Iniciar sesión
+                        </PrimaryButton>
+                    </div>
+                    <div class="mt-8 flex justify-center">
+                        <img src="storage/plataforma/renarec.png" width="150px" alt="">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script setup>
+import Checkbox from "@/Components/Checkbox.vue";
+import InputError from "@/Components/InputError.vue";
+import PrimaryButton from "@/Components/PrimaryButton.vue";
+import TextInput from "@/Components/TextInput.vue";
+import { Head, Link, useForm } from "@inertiajs/vue3";
+
+defineProps({
+    canResetPassword: Boolean,
+    status: String,
+});
 
 const form = useForm({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
     remember: false,
 });
 
 const submit = () => {
-    form.post(route('login'), {
-        onFinish: () => form.reset('password'),
+    form.post(route("login"), {
+        onFinish: () => form.reset("password"),
     });
 };
 </script>
-
-<template>
-    <AuthBase title="Iniciar Sesión"
-        description="Ingresa tu correo electrónico y contraseña a continuación para iniciar sesión.">
-
-        <Head title="Log in" />
-
-        <div v-if="status" class="mb-4 text-center text-sm font-medium text-green-600">
-            {{ status }}
-        </div>
-
-        <form @submit.prevent="submit" class="flex flex-col gap-6">
-            <div class="grid gap-6">
-                <div class="grid gap-2">
-                    <Label for="email">Correo electrónico</Label>
-                    <Input id="email" type="email" required autofocus :tabindex="1" autocomplete="email"
-                        v-model="form.email" placeholder="email@example.com" />
-                    <InputError :message="form.errors.email" />
-                </div>
-
-                <div class="grid gap-2">
-                    <div class="flex items-center justify-between">
-                        <Label for="password">Contraseña</Label>
-                        <TextLink v-if="canResetPassword" :href="route('password.request')" class="text-sm"
-                            :tabindex="5">
-                            ¿Has olvidado tu contraseña?
-                        </TextLink>
-                    </div>
-                    <Input id="password" type="password" required :tabindex="2" autocomplete="current-password"
-                        v-model="form.password" placeholder="Password" />
-                    <InputError :message="form.errors.password" />
-                </div>
-
-                <div class="flex items-center justify-between" :tabindex="3">
-                    <Label for="remember" class="flex items-center space-x-3">
-                        <Checkbox id="remember" v-model:checked="form.remember" :tabindex="4" />
-                        <span>Recordar</span>
-                    </Label>
-                </div>
-
-                <Button type="submit"
-                    class="mt-4 w-full border-2 border-white bg-white text-[#6A69FD] hover:bg-[#6A69FD] hover:text-white hover:border-white hover:border-2 transition-all duration-300"
-                    :tabindex="4" :disabled="form.processing">
-                    <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
-                    Iniciar Sesión
-                </Button>
-            </div>
-
-            <!--
-            <div class="text-center text-sm text-muted-foreground">
-                Don't have an account?
-                <TextLink :href="route('register')" :tabindex="5">Sign up</TextLink>
-            </div>
-            -->
-            <!-- Imagen centrada debajo del formulario -->
-            <div class="flex justify-center">
-                <div class="w-32 flex items-center justify-center">
-                    <img src="/storage/images/logoBajoLogin.png" alt="Renarec" class="w-32 h-auto object-cover" />
-                </div>
-            </div>
-        </form>
-    </AuthBase>
-</template>
