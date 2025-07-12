@@ -16,11 +16,19 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
+
+        // Crear roles si no existen
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Administrador']);
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Tienda']);
+
         $user = User::factory()->create([
             'name' => 'Timoteo',
             'email' => 'edgartimoteo@gmail.com',
             'password' => bcrypt('amorjanet123'),
         ]);
+
+        // Asignar rol Administrador al usuario creado
+        $user->assignRole('Administrador');
 
         // Crear ciudades
         $ciudades = ['Cuenca', 'Ambato', 'Quito'];

@@ -58,21 +58,21 @@ class AuthController extends Controller
                 ]);
                 //puntos
                 //1.- comparar si la fecha cae dentro de una promocional con mi tabla puntos
-                $datospuntos=Puntos::first();
+                $datospuntos = Puntos::first();
                 //comparar la fecha de hoy hasta la fecha para saber que puntos darle
- 
-                $hoy = now()->toDateString(); 
+
+                $hoy = now()->toDateString();
                 $puntos_usuario = 100; // Inicializar puntos del usuario
                 //imprimir compracion
 
-                if($hoy<=$datospuntos->fecha_hasta){
+                if ($hoy <= $datospuntos->fecha_hasta) {
                     //se le da los puntos de promocion
-                    $puntos_usuario=$datospuntos->puntos_registro_promocional;
-                }else{
+                    $puntos_usuario = $datospuntos->puntos_registro_promocional;
+                } else {
                     //se le da puntos normales
-                    $puntos_usuario=$datospuntos->puntos_reciclado_normal;
+                    $puntos_usuario = $datospuntos->puntos_reciclado_normal;
                 }
-  
+
                 $profile = Ciudadano::create($profileData);
                 // Generar código de verificación
                 $verificationCode = rand(100000, 999999);
@@ -98,14 +98,13 @@ class AuthController extends Controller
                     'materiales_aceptados' => 'required|array',
                 ]);
                 // Convertir arrays a JSON
-    $profileData['dias_atencion'] = json_encode($profileData['dias_atencion']);
-    $profileData['materiales_aceptados'] = json_encode($profileData['materiales_aceptados']);
-                
-    // Generar un color claro aleatorio
-$r = rand(180, 255);
-$g = rand(180, 255);
-$b = rand(180, 255);
-$profileData['color'] = sprintf("#%02x%02x%02x", $r, $g, $b); // Ejemplo: #f4e3c2
+                $profileData['dias_atencion'] = json_encode($profileData['dias_atencion']);
+                $profileData['materiales_aceptados'] = json_encode($profileData['materiales_aceptados']);
+
+                $r = rand(0, 100);
+                $g = rand(0, 100);
+                $b = rand(0, 100);
+                $profileData['color'] = sprintf("#%02x%02x%02x", $r, $g, $b); // Ejemplo: #2a1f3d
 
                 $profile = Asociacion::create($profileData);
             }
@@ -119,7 +118,7 @@ $profileData['color'] = sprintf("#%02x%02x%02x", $r, $g, $b); // Ejemplo: #f4e3c
                     'role' => $common['role'],
                     'profile_id' => $profile->id,
                     'email_verification_code' => $verificationCode,
-                    'puntos'=>$puntos_usuario ?? 0, // Añadir puntos al usuario
+                    'puntos' => $puntos_usuario ?? 0, // Añadir puntos al usuario
                 ];
                 $user = AuthUser::create($userData);
                 // Enviar correo con el código
@@ -133,7 +132,7 @@ $profileData['color'] = sprintf("#%02x%02x%02x", $r, $g, $b); // Ejemplo: #f4e3c
                     'password' => Hash::make($common['password']),
                     'role' => $common['role'],
                     'profile_id' => $profile->id,
-                    'puntos'=>$puntos_usuario ?? 0, 
+                    'puntos' => $puntos_usuario ?? 0,
                 ];
                 $user = AuthUser::create($userData);
             }
@@ -579,68 +578,68 @@ $profileData['color'] = sprintf("#%02x%02x%02x", $r, $g, $b); // Ejemplo: #f4e3c
         }
     }
 
-   public function verificarEmail(Request $request)
-{
-    try {
-        $request->validate([
-            'email' => 'required|email',
-            'code' => 'required'
-        ]);
+    public function verificarEmail(Request $request)
+    {
+        try {
+            $request->validate([
+                'email' => 'required|email',
+                'code' => 'required'
+            ]);
 
-        Log::info('Email: ' . $request->email);
-        Log::info('Código: ' . $request->code);
+            Log::info('Email: ' . $request->email);
+            Log::info('Código: ' . $request->code);
 
-        $user = AuthUser::where('email', $request->email)->first();
+            $user = AuthUser::where('email', $request->email)->first();
 
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'Usuario no encontrado'], 404);
+            }
+
+            if ($user->email_verification_code == $request->code) {
+                $user->email_verified_at = now();
+                $user->email_verification_code = null;
+                $user->save();
+
+                // Generar token de acceso
+                $token = $user->createToken('auth_token')->plainTextToken;
+
+                // Obtener datos específicos del perfil
+                $profileData = null;
+                if ($user->role === 'ciudadano') {
+                    $profileData = Ciudadano::find($user->profile_id);
+                } elseif ($user->role === 'reciclador') {
+                    $profileData = Reciclador::with('asociacion:id,name')->find($user->profile_id);
+                } elseif ($user->role === 'asociacion') {
+                    $profileData = Asociacion::find($user->profile_id);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Correo verificado correctamente',
+                    'data' => [
+                        'user' => $user,
+                        'profile' => $profileData,
+                        'token' => $token
+                    ]
+                ]);
+            } else {
+                return response()->json(['success' => false, 'message' => 'Código incorrecto'], 400);
+            }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errores de validación',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error en verificarEmail: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ocurrió un error al verificar el correo.',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        if ($user->email_verification_code == $request->code) {
-    $user->email_verified_at = now();
-    $user->email_verification_code = null;
-    $user->save();
-
-    // Generar token de acceso
-    $token = $user->createToken('auth_token')->plainTextToken;
-
-    // Obtener datos específicos del perfil
-    $profileData = null;
-    if ($user->role === 'ciudadano') {
-        $profileData = Ciudadano::find($user->profile_id);
-    } elseif ($user->role === 'reciclador') {
-        $profileData = Reciclador::with('asociacion:id,name')->find($user->profile_id);
-    } elseif ($user->role === 'asociacion') {
-        $profileData = Asociacion::find($user->profile_id);
     }
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Correo verificado correctamente',
-        'data' => [
-            'user' => $user,
-            'profile' => $profileData,
-            'token' => $token
-        ]
-    ]);
-} else {
-            return response()->json(['success' => false, 'message' => 'Código incorrecto'], 400);
-        }
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Errores de validación',
-            'errors' => $e->errors(),
-        ], 422);
-    } catch (\Exception $e) {
-        Log::error('Error en verificarEmail: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'Ocurrió un error al verificar el correo.',
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-}
     public function reenviarCodigo(Request $request)
     {
         $request->validate([

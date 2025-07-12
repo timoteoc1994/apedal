@@ -4,9 +4,10 @@
     <AuthenticatedLayout>
         <template #header>
             <Link class="text-indigo-600 hover:text-indigo-500" :href="route('asociation.index')">Asociaciones/</Link>
-            <Link class="text-indigo-600 hover:text-indigo-500" :href="route('asociation.index.perfil', { id: nombreAsociacion.asociacion.id })">
+            <Link class="text-indigo-600 hover:text-indigo-500" :href="route('asociation.index.perfil', { id: nombreAsociacion.id })">
                 {{ nombreAsociacion.asociacion.name }}/
             </Link>
+
             Recicladores
         </template>
 
@@ -68,10 +69,10 @@
                                 <span
                                     :class="[
                                         'rounded-full px-2 py-1 text-xs font-semibold',
-                                        rec.estado === 'Activo' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800',
+                                        rec.status === 'Activo' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800',
                                     ]"
                                 >
-                                    {{ rec.estado }}
+                                    {{ rec.status}}
                                 </span>
                             </td>
                             <td class="px-6 py-4">{{ formatDate(rec.created_at) }}</td>
@@ -94,6 +95,13 @@
                                     >
                                         <TrashIcon class="h-5 w-5" />
                                     </button>
+                                    <a
+    target="_blank"
+    v-if="rec.status === 'disponible' || rec.status === 'en_ruta'"
+    :href="route('tracking.show', rec.auth_user.id)"
+>
+    <MapPinIcon class="h-5 w-5 text-emerald-600 hover:text-emerald-900" />
+</a>                             
                                 </div>
                             </td>
                         </tr>
@@ -139,16 +147,19 @@
                     >
                         <ChevronRightIcon class="h-5 w-5" />
                     </button>
+                    
+                    
                 </div>
             </div>
         </div>
+
     </AuthenticatedLayout>
 </template>
 
 <script setup lang="ts">
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, EyeIcon, PencilIcon, SearchIcon, TrashIcon } from 'lucide-vue-next';
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, EyeIcon, PencilIcon, SearchIcon, TrashIcon, MapPinIcon } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -205,7 +216,7 @@ const ordenarPor = (campo: string) => {
     sort.value = campo;
     direction.value = newDirection;
     router.get(
-        route('asociation.index.recicladores', { id: props.nombreAsociacion.asociacion.id }),
+        route('asociation.index.recicladores', { id: props.nombreAsociacion.id }),
         { search: search.value, sort: campo, direction: newDirection },
         { preserveState: true },
     );
@@ -213,7 +224,7 @@ const ordenarPor = (campo: string) => {
 
 function buscar() {
     router.get(
-        route('asociation.index.recicladores', { id: props.nombreAsociacion.asociacion.id }),
+        route('asociation.index.recicladores', { id: props.nombreAsociacion.id }),
         { search: search.value, sort: sort.value, direction: direction.value },
         { preserveState: true, replace: true },
     );

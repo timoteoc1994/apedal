@@ -4,20 +4,39 @@ namespace App\Http\Controllers;
 
 use App\Models\Zona;
 use App\Models\Asociacion;
+use App\Models\City;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class ZonaController extends Controller
 {
-    // Mostrar todas las zonas en el mapa
-    public function mapa()
+    //index para mostrar por ciudades cada zona
+    public function index()
     {
-        $zonas = Zona::with('asociacion')->get();
-        $asociaciones = Asociacion::all();
+        $ciudades = City::all();  
+        return Inertia::render('Zonas/vista', [
+            'ciudades' => $ciudades
+        ]);
+    }
+    // Mostrar todas las zonas en el mapa
+       public function mapa($ciudad)
+    {
+        // Obtener zonas que pertenecen a asociaciones de la ciudad específica
+        $zonas = Zona::with(['asociacion' => function($query) use ($ciudad) {
+            $query->where('city', $ciudad);
+        }])
+        ->whereHas('asociacion', function($query) use ($ciudad) {
+            $query->where('city', $ciudad);
+        })
+        ->get();
+
+        // Obtener solo las asociaciones de la ciudad específica
+        $asociaciones = Asociacion::where('city', $ciudad)->get();
 
         return Inertia::render('Zonas/Mapa', [
             'zonas' => $zonas,
-            'asociaciones' => $asociaciones
+            'asociaciones' => $asociaciones,
+            'ciudad' => $ciudad
         ]);
     }
 
@@ -40,8 +59,8 @@ class ZonaController extends Controller
 
         Zona::create($validated);
 
-        return redirect()->route('zonas.mapa')
-            ->with('success', 'Zona creada exitosamente.');
+        //regresar para atras
+        return back()->with('success', 'Zona creada exitosamente.');
     }
 
     // Actualizar una zona existente
@@ -56,8 +75,9 @@ class ZonaController extends Controller
         $zona = Zona::findOrFail($id);
         $zona->update($validated);
 
-        return redirect()->route('zonas.mapa')
-            ->with('success', 'Zona actualizada exitosamente.');
+        //regresar para atras
+        return back()->with('success', 'Zona actualizada exitosamente.');
+
     }
 
     // Eliminar una zona
@@ -66,8 +86,8 @@ class ZonaController extends Controller
         $zona = Zona::findOrFail($id);
         $zona->delete();
 
-        return redirect()->route('zonas.mapa')
-            ->with('success', 'Zona eliminada exitosamente.');
+        //regresar para atras
+        return back()->with('success', 'Zona eliminada exitosamente.');
     }
 
     // Obtener todas las zonas (para API)

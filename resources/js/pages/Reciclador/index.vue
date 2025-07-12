@@ -4,7 +4,7 @@ import { Head, router } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
 import Swal from 'sweetalert2'
 import axios from 'axios'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogTrigger } from '@/Components/ui/dialog'
 import {
   PlusIcon,
   SearchIcon,

@@ -29,7 +29,7 @@
                         <TextInput
                             id="email"
                             type="email"
-                            class="rounded-3xl border-none bg-white  px-6 py-2 text-center  placeholder-black-200 shadow-lg outline-none backdrop-blur-md"
+                            class="rounded-3xl border-none bg-white text-black  px-6 py-2 text-center  placeholder-black-200 shadow-lg outline-none backdrop-blur-md"
                             v-model="form.email"
                             required
                             autofocus
@@ -44,7 +44,7 @@
                             <TextInput
                                 id="password"
                                 type="password"
-                                class="rounded-3xl border-none bg-white  text-black px-6 py-2 text-center  placeholder-black-200 shadow-lg outline-none backdrop-blur-md"
+                                class="rounded-3xl border-none text-black bg-white  text-black px-6 py-2 text-center  placeholder-black-200 shadow-lg outline-none backdrop-blur-md"
                                 v-model="form.password"
                                 required
                                 autocomplete="current-password"

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActualizarPerfilController;
+use App\Http\Controllers\ApiProductoController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\ImpactoAmbientalController;
 use Illuminate\Http\Request;
@@ -21,6 +22,8 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\MensajeController;
 use App\Models\AppVersion;
 use App\Http\Controllers\FormulariMensualController;
+use App\Http\Controllers\GuardarReferedo;
+use App\Http\Controllers\RankingController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -73,7 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/upload_referential_images', [ActualizarPerfilController::class, 'uploadReferentialImages']);
 
     // Rutas para ciudadanos
-    Route::middleware(['role:ciudadano'])->prefix('ciudadano')->group(function () {
+    Route::middleware(['custom-role:ciudadano'])->prefix('ciudadano')->group(function () {
         //ruta guardar solicitudes agendadas
         Route::post('/ciudadanos/solicitudes', [SolicitudRecoleccionController::class, 'store']);
         //ruta obtener solicutudes por fecha
@@ -102,11 +105,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/cancelar_solicitud_ciudadano', [SolicitudRecoleccionController::class, 'cancelar_solicitud_ciudadano']);
         //actualizar puntos del ciudadano manual
         Route::post('/actualizar-puntos-ciudadano', [SolicitudRecoleccionController::class, 'actualizarPuntosCiudadano']);
+
+        //ruta traer productos de tienda
+        Route::get('/productos', [ApiProductoController::class, 'index']);
+        //ruta para canjear un producto
+        Route::post('/canjear-producto', [ApiProductoController::class, 'canjearProducto']);
+        Route::get('/historial-canjes', [ApiProductoController::class, 'historialCanjes']);
+
+        //ruta para ranking de ciudadanos que mas han reciclado
+        Route::get('/top-recicladores', [RankingController::class, 'index']);
+
+        //guardar refereido
+        Route::post('/guardar-referido', [GuardarReferedo::class, 'guardarReferido']);
     });
 
 
     // Rutas para recicladores
-    Route::middleware(['role:reciclador'])->prefix('reciclador')->group(function () {
+    Route::middleware(['custom-role:reciclador'])->prefix('reciclador')->group(function () {
         Route::get('/asignaciones', [RecicladorController::class, 'getAsignaciones']);
         Route::put('/asignaciones/{id}/actualizar', [RecicladorController::class, 'updateAsignacion']);
         //actualizar estado de un reciclador
@@ -156,7 +171,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     // Rutas para asociaciones
-    Route::middleware(['role:asociacion'])->prefix('asociacion')->group(function () {
+    Route::middleware(['custom-role:asociacion'])->prefix('asociacion')->group(function () {
         // Obtener todas las solicitudes de mi asocion con estado pendiente
         Route::get('/asociacion/mostrar/solicitudes', [MostrarSolicitudesController::class, 'index']);
         //obtener detalles de una solicitud de mi asociacion

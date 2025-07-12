@@ -27,6 +27,7 @@ class AuthUser extends Authenticatable
         'fcm_token',
         'email_verification_code',
         'puntos', // Añadir puntos al modelo
+        'email_referido', // Añadir email referido al modelo
     ];
 
     /**

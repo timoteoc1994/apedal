@@ -12,6 +12,19 @@
                 </svg>
                 Crear Nueva Zona
             </button>
+            
+            <!-- Selector de tipo de mapa -->
+            <div class="mb-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Mapa</label>
+                <select @change="cambiarTipoMapa" v-model="tipoMapaSeleccionado"
+                    class="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="osm">Mapa Estándar</option>
+                    <option value="satellite">Vista Satélite</option>
+                    <option value="terrain">Mapa Topográfico</option>
+                    <option value="minimal">Mapa Minimalista</option>
+                </select>
+            </div>
+            
             <button @click="toggleLeyenda"
                 class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded w-full flex items-center justify-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -144,7 +157,7 @@
             </div>
 
             <!-- Botones de acción para el mapa -->
-            <div v-if="!dibujando && !mostrarFormulario" class="mt-4 flex gap-2">
+            <div v-if="!dibujando && !mostrarFormulario" class="mt-4 flex gap-2 flex-wrap">
                 <button @click="activarMododibujo" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
                     Crear Nueva Zona
                 </button>
@@ -153,6 +166,15 @@
                     class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded">
                     Editar Zonas
                 </button>
+                
+                <!-- Selector de tipo de mapa para modo normal -->
+                <select @change="cambiarTipoMapa" v-model="tipoMapaSeleccionado"
+                    class="px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="osm">Mapa Estándar</option>
+                    <option value="satellite">Vista Satélite</option>
+                    <option value="terrain">Mapa Topográfico</option>
+                    <option value="minimal">Mapa Minimalista</option>
+                </select>
             </div>
 
             <!-- Leyenda de asociaciones -->
@@ -166,7 +188,8 @@
                 </div>
             </div>
         </div>
-    </div>°
+    </div>
+
 </template>
 
 <script setup>
@@ -211,6 +234,30 @@ const nuevaZona = ref({
 });
 const zonaSeleccionada = ref(null);
 const zonaLayers = ref({}); // Mapeo de ID de zona a capa Leaflet
+const tipoMapaSeleccionado = ref('osm');
+const capaMapaActual = ref(null);
+
+// Definir las diferentes capas de mapas
+const tiposMapas = {
+    osm: {
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    },
+    satellite: {
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    },
+    terrain: {
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+        attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
+    },
+    minimal: {
+        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+    }
+};
 
 // Calcular asociaciones únicas basado en las zonas
 const asociacionesUnicas = computed(() => {
@@ -259,10 +306,8 @@ onMounted(async () => {
             }).addTo(map.value);
         }
 
-        // Añadir capa de OpenStreetMap (gratuita)
-        L.value.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map.value);
+        // Añadir capa de mapa inicial
+        capaMapaActual.value = L.value.tileLayer(tiposMapas.osm.url, tiposMapas.osm).addTo(map.value);
 
         // Inicializar capa para los elementos dibujados
         drawnItems.value = new L.value.FeatureGroup();
@@ -343,7 +388,8 @@ const cargarZonas = async () => {
     try {
         if (!L.value) return;
 
-        const response = await axios.get(route('api.zonas'));
+        // ✅ Usar las props filtradas en lugar de la API
+        const zonasData = props.zonas || [];
 
         if (drawnItems.value) {
             drawnItems.value.clearLayers();
@@ -351,15 +397,21 @@ const cargarZonas = async () => {
 
         zonaLayers.value = {};
 
+        // Si no hay zonas, no dibujar nada
+        if (zonasData.length === 0) {
+            console.log('No hay zonas para esta ciudad');
+            return;
+        }
+
         // Añadir polígonos de las zonas
-        response.data.forEach(zona => {
+        zonasData.forEach(zona => {
             const polygon = L.value.polygon(zona.coordenadas.map(coord => [coord.lat, coord.lng]), {
-                color: zona.color || '#3388ff',
+                color: zona.asociacion?.color || '#3388ff',
                 fillOpacity: 0.5,
                 weight: 2
             });
 
-            polygon.bindTooltip(`<strong>${zona.nombre}</strong><br>Asociación: ${zona.asociacion}`, {
+            polygon.bindTooltip(`<strong>${zona.nombre}</strong><br>Asociación: ${zona.asociacion?.name || 'Sin asociación'}`, {
                 permanent: false,
                 direction: 'center',
                 className: 'leaflet-tooltip-zona'
@@ -375,9 +427,8 @@ const cargarZonas = async () => {
             zonaLayers.value[polygon._leaflet_id] = zona.id;
         });
 
-
         // Ajustar la vista si hay zonas
-        if (response.data.length > 0) {
+        if (zonasData.length > 0) {
             map.value.fitBounds(drawnItems.value.getBounds());
         }
 
@@ -703,6 +754,22 @@ const cancelarDibujo = () => {
     cargarZonas();
 }
 
+
+// Función para cambiar el tipo de mapa
+const cambiarTipoMapa = () => {
+    if (capaMapaActual.value && map.value) {
+        // Remover la capa actual
+        map.value.removeLayer(capaMapaActual.value);
+        
+        // Agregar la nueva capa
+        const tipoMapa = tiposMapas[tipoMapaSeleccionado.value];
+        capaMapaActual.value = L.value.tileLayer(tipoMapa.url, {
+            attribution: tipoMapa.attribution,
+            subdomains: tipoMapa.subdomains || 'abc',
+            maxZoom: tipoMapa.maxZoom || 18
+        }).addTo(map.value);
+    }
+};
 
 // Enviar el formulario para crear o actualizar la zona
 const enviarFormulario = () => {

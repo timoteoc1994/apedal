@@ -5,7 +5,7 @@ import { ref } from 'vue';
 // Components
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/Components/ui/button';
 import {
     Dialog,
     DialogClose,
@@ -15,9 +15,9 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from '@/Components/ui/dialog';
+import { Input } from '@/Components/ui/input';
+import { Label } from '@/Components/ui/label';
 
 const passwordInput = ref<HTMLInputElement | null>(null);
 

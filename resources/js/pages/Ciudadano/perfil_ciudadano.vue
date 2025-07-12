@@ -370,7 +370,7 @@
 </template>
 
 <script setup lang="ts">
-import MiniBarChart from '@/components/MiniBarChart.vue';
+import MiniBarChart from '@/Components/MiniBarChart.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AsociacionController;
+use App\Http\Controllers\CangeTiendasController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -9,7 +10,10 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\CityController;
 use App\Http\Controllers\CiudadanoController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MatrizRecuperacionController;
 use App\Http\Controllers\NotificacionPush;
+use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\PuntosController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\ViewAsociationController;
@@ -35,11 +39,12 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+//sacar a la ruta /dasboard para poner con roles Adminsitrador y Tienda cuando se autentique
 
-Route::middleware('auth')->group(function () {
+
+Route::middleware(['auth', 'role:Administrador,Tienda'])->group(function () {
+
+
     Route::get('/about', fn() => Inertia::render('About'))->name('about');
 
     Route::get('users', [UserController::class, 'index'])->name('users.index');
@@ -47,8 +52,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
 
+Route::middleware(['auth', 'role:Administrador'])->group(function () {
 
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('/ciudad', [CityController::class, 'index'])->name('ciudad.index');
 
     //ruta ciudades
     Route::get('/ciudad', [CityController::class, 'index'])->name('ciudad.index');
@@ -57,7 +67,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/cities', [CityController::class, 'getCities']);
 
     // Rutas para las zonas
-    Route::get('/zonas/mapa', [ZonaController::class, 'mapa'])->name('zonas.mapa');
+    Route::get('/zonas/index', [ZonaController::class, 'index'])->name('zonas.index');
+    Route::get('/zonas/mapa/{ciudad}', [ZonaController::class, 'mapa'])->name('zonas.mapa');
     Route::get('/zonas/{id}/obtener', [ZonaController::class, 'obtener'])->name('zonas.obtener');
     Route::post('/zonas', [ZonaController::class, 'store'])->name('zonas.store');
     Route::put('/zonas/{id}', [ZonaController::class, 'update'])->name('zonas.update');
@@ -104,6 +115,30 @@ Route::middleware('auth')->group(function () {
     //Notificacion push
     Route::get('/notificacionpush', [NotificacionPush::class, 'index'])->name('notificacionpush.create');
     Route::post('/notificaciones/enviar', [NotificacionPush::class, 'enviar'])->name('notificacionpush.enviar');
+
+    //tienda
+    Route::get('/productos', [ProductoController::class, 'index'])->name('producto.index');
+    Route::post('/productos/nuevo', [ProductoController::class, 'store'])->name('producto.index.nuevo');
+    Route::delete('/productos/{id}', [ProductoController::class, 'destroy'])->name('producto.index.eliminar');
+    Route::put('/productos/{id}/editar', [ProductoController::class, 'update'])->name('producto.update');
+
+    //rutas productos
+    Route::get('/productos/{id}', [ProductoController::class, 'show'])->name('producto.index.show');
+    Route::post('/productos/{id}/guardar', [ProductoController::class, 'guardar_tiendas'])->name('producto.index.imagen.tiendas');
+    Route::delete('/productos/tienda/{id}', [ProductoController::class, 'destroytienda'])->name('producto.index.tienda.eliminar');
+    Route::put('/productos/tienda/actualizar/{id}', [ProductoController::class, 'actualizartienda'])->name('producto.index.tienda.actualizar');
+
+    //matriz de recuperacion
+    Route::get('/matrizrecuperacion', [MatrizRecuperacionController::class, 'index'])->name('matrizrecuperacion.index');
+
+     Route::get('descargar_excel', [MatrizRecuperacionController::class, 'descargar_excel'])->name('descargar_excel');
+});
+
+Route::middleware(['auth', 'role:Tienda'])->group(function () {
+    Route::get('/canjear', [CangeTiendasController::class, 'index'])->name('canje.index');
+    Route::post('/canjear', [CangeTiendasController::class, 'store'])->name('canje.store');
+    Route::get('/tienda/productos', [CangeTiendasController::class, 'tienda_productos'])->name('tienda.productos');
+    Route::get('historial/tienda/productos', [CangeTiendasController::class, 'historial_tienda_productos'])->name('tienda.productos.historial');
 });
 
 Route::get('/tracking/{id?}', [TrackingController::class, 'show'])->name('tracking.show');

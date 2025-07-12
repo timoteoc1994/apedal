@@ -41,148 +41,167 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
      * @return void
      */
     public function handle()
-    {
-        Log::info('Ejecutando búsqueda de recicladores adicionales', [
+{
+    Log::info('Ejecutando búsqueda de recicladores', [
+        'solicitud_id' => $this->solicitudId,
+        'intento' => $this->intentos + 1,
+        'max_intentos' => $this->maxIntentos,
+        'radio_km' => $this->radioKm
+    ]);
+
+    $solicitud = SolicitudRecoleccion::find($this->solicitudId);
+
+    // Verificar si la solicitud aún existe y sigue en estado de búsqueda
+    if (!$solicitud || $solicitud->estado !== 'buscando_reciclador') {
+        Log::info('Búsqueda de recicladores cancelada: solicitud no disponible o ya asignada', [
             'solicitud_id' => $this->solicitudId,
             'intento' => $this->intentos + 1,
-            'max_intentos' => $this->maxIntentos
+            'estado_actual' => $solicitud->estado ?? 'no_encontrada'
+        ]);
+        return;
+    }
+
+    // Obtener los IDs actuales de recicladores disponibles
+    $idsActuales = json_decode($solicitud->ids_disponibles, true) ?: [];
+
+    // Calcular radio progresivo: empezar con 3km y aumentar gradualmente
+    $radioActual = $this->radioKm + ($this->intentos * 1.5); // 3km, 4.5km, 6km, 7.5km...
+    $radioActual = min($radioActual, 15); // Máximo 15km
+
+    Log::info('Buscando recicladores con radio actual', [
+        'solicitud_id' => $this->solicitudId,
+        'radio_actual' => $radioActual,
+        'intento' => $this->intentos + 1,
+        'recicladores_actuales' => count($idsActuales)
+    ]);
+
+    // Buscar nuevos recicladores cercanos usando Redis
+    $nuevosRecicladores = $this->encontrarNuevosRecicladores(
+        $solicitud->latitud,
+        $solicitud->longitud,
+        $radioActual,
+        10,
+        $idsActuales
+    );
+
+    if (!$nuevosRecicladores->isEmpty()) {
+        // Extraer nuevos IDs de recicladores
+        $nuevosIds = $nuevosRecicladores
+            ->map(fn($reciclador) => $reciclador->auth_user_id)
+            ->filter()
+            ->values()
+            ->toArray();
+
+        // Combinar y eliminar duplicados
+        $todosIds = array_unique(array_merge($idsActuales, $nuevosIds));
+
+        // Actualizar la solicitud
+        $solicitud->ids_disponibles = json_encode($todosIds);
+        $solicitud->save();
+
+        Log::info('Nuevos recicladores encontrados y agregados', [
+            'solicitud_id' => $this->solicitudId,
+            'nuevos_recicladores' => count($nuevosIds),
+            'total_recicladores' => count($todosIds),
+            'intento' => $this->intentos + 1,
+            'radio_usado' => $radioActual
         ]);
 
-        $solicitud = SolicitudRecoleccion::find($this->solicitudId);
+        // Cargar datos completos de la solicitud para las notificaciones
+        $solicitud->load(['authUser', 'authUser.ciudadano', 'materiales']);
 
-        // Verificar si la solicitud aún existe y sigue en estado de búsqueda
-        if (!$solicitud || $solicitud->estado !== 'buscando_reciclador') {
-            Log::info('Búsqueda de recicladores cancelada: solicitud no disponible o ya asignada', [
-                'solicitud_id' => $this->solicitudId,
-                'intento' => $this->intentos + 1
-            ]);
-            return;
+        // Notificar a los nuevos recicladores
+        foreach ($nuevosRecicladores as $reciclador) {
+            // Verificar si ya existe una notificación para este reciclador
+            $notificacionExistente = DB::table('notificaciones_solicitudes')
+                ->where('solicitud_id', $solicitud->id)
+                ->where('reciclador_id', $reciclador->id)
+                ->exists();
+
+            if (!$notificacionExistente) {
+                // Crear notificación en BD
+                DB::table('notificaciones_solicitudes')->insert([
+                    'solicitud_id' => $solicitud->id,
+                    'reciclador_id' => $reciclador->id,
+                    'estado' => 'pendiente',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                // Emitir evento WebSocket
+                NuevaSolicitudInmediata::dispatch($solicitud, $reciclador->auth_user_id, 'inmediata');
+
+                Log::info('Notificación enviada a reciclador', [
+                    'reciclador_id' => $reciclador->id,
+                    'auth_user_id' => $reciclador->auth_user_id,
+                    'solicitud_id' => $solicitud->id,
+                    'distancia_km' => $reciclador->distancia ?? 'N/A'
+                ]);
+            }
         }
 
-        // Obtener los IDs actuales de recicladores disponibles
-        $idsActuales = json_decode($solicitud->ids_disponibles, true) ?: [];
+        // Si es el primer intento y encontramos recicladores, notificar al usuario
+        if ($this->intentos === 0 && count($nuevosIds) > 0) {
+            Log::info('Primera búsqueda exitosa - recicladores encontrados', [
+                'solicitud_id' => $this->solicitudId,
+                'recicladores_encontrados' => count($nuevosIds)
+            ]);
+            
+            // Aquí podrías enviar una notificación al usuario de que se encontraron recicladores
+            // Por ejemplo, un evento WebSocket al usuario o notificación push
+        }
 
-        // Buscar nuevos recicladores cercanos usando Redis
-        $nuevosRecicladores = $this->encontrarNuevosRecicladores(
-            $solicitud->latitud,
-            $solicitud->longitud,
-            $this->radioKm,
-            10,
-            $idsActuales
-        );
+    } else {
+        Log::info('No se encontraron nuevos recicladores disponibles', [
+            'solicitud_id' => $this->solicitudId,
+            'intento' => $this->intentos + 1,
+            'radio_usado' => $radioActual,
+            'recicladores_actuales' => count($idsActuales)
+        ]);
+    }
 
-        if (!$nuevosRecicladores->isEmpty()) {
-            // Extraer nuevos IDs de recicladores
-            $nuevosIds = $nuevosRecicladores
-                ->map(fn($reciclador) => $reciclador->auth_user_id)
-                ->filter()
-                ->values()
-                ->toArray();
+    // Continuar buscando si no hemos alcanzado el máximo de intentos
+    if ($this->intentos + 1 < $this->maxIntentos) {
+        // Programar próximo intento
+        ActualizarRecicladoresdisponibles::dispatch(
+            $this->solicitudId,
+            $this->intentos + 1,
+            $this->maxIntentos,
+            $this->radioKm
+        )->delay(now()->addSeconds(15)); // Cada 15 segundos
 
-            // Combinar y eliminar duplicados
-            $todosIds = array_unique(array_merge($idsActuales, $nuevosIds));
+        Log::info('Programado próximo intento de búsqueda', [
+            'solicitud_id' => $this->solicitudId,
+            'próximo_intento' => $this->intentos + 2,
+            'max_intentos' => $this->maxIntentos,
+            'próxima_ejecución' => 'en 15 segundos'
+        ]);
+    } else {
+        // Finalizar búsqueda
+        Log::info('Finalizada la búsqueda periódica de recicladores', [
+            'solicitud_id' => $this->solicitudId,
+            'total_intentos' => $this->intentos + 1
+        ]);
 
-            // Actualizar la solicitud
-            $solicitud->ids_disponibles = json_encode($todosIds);
+        // Verificar si después de todos los intentos hay recicladores disponibles
+        $idsFinal = json_decode($solicitud->ids_disponibles, true) ?: [];
+        if (empty($idsFinal)) {
+            $solicitud->estado = 'sin_recicladores';
             $solicitud->save();
 
-            Log::info('Nuevos recicladores encontrados y agregados', [
+            Log::warning('No se encontraron recicladores después de todos los intentos', [
                 'solicitud_id' => $this->solicitudId,
-                'nuevos_recicladores' => count($nuevosIds),
-                'total_recicladores' => count($todosIds),
-                'intento' => $this->intentos + 1
-            ]);
-
-            // Cargar datos completos de la solicitud para las notificaciones
-            $solicitud->load(['authUser', 'authUser.ciudadano', 'materiales']);
-
-            // Notificar a los nuevos recicladores
-            foreach ($nuevosRecicladores as $reciclador) {
-                // Verificar si ya existe una notificación para este reciclador
-                $notificacionExistente = DB::table('notificaciones_solicitudes')
-                    ->where('solicitud_id', $solicitud->id)
-                    ->where('reciclador_id', $reciclador->id)
-                    ->exists();
-
-                if (!$notificacionExistente) {
-                    // Crear notificación en BD
-                    DB::table('notificaciones_solicitudes')->insert([
-                        'solicitud_id' => $solicitud->id,
-                        'reciclador_id' => $reciclador->id,
-                        'estado' => 'pendiente',
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-
-                    // Emitir evento WebSocket
-                    NuevaSolicitudInmediata::dispatch($solicitud, $reciclador->auth_user_id, 'inmediata');
-
-                    Log::info('Notificación enviada a nuevo reciclador', [
-                        'reciclador_id' => $reciclador->id,
-                        'auth_user_id' => $reciclador->auth_user_id,
-                        'solicitud_id' => $solicitud->id
-                    ]);
-
-                    // También enviar notificación push si es necesario
-                    // $this->enviarNotificacionReciclador($reciclador, $solicitud);
-                }
-            }
-        } else {
-            Log::info('No se encontraron nuevos recicladores disponibles', [
-                'solicitud_id' => $this->solicitudId,
-                'intento' => $this->intentos + 1
-            ]);
-
-            // Si estamos en el último intento y no hay suficientes recicladores, aumentar el radio
-            if ($this->intentos + 1 < $this->maxIntentos) {
-                ActualizarRecicladoresdisponibles::dispatch(
-                    $this->solicitudId,
-                    $this->intentos + 1,
-                    $this->maxIntentos,
-                    $this->radioKm
-                )->delay(now()->addSeconds(15)); // Programar cada 15 segundos
-
-                Log::info('Programado próximo intento de búsqueda', [
-                    'solicitud_id' => $this->solicitudId,
-                    'próximo_intento' => $this->intentos + 2,
-                    'max_intentos' => $this->maxIntentos,
-                    'próxima_ejecución' => 'en 15 segundos'
-                ]);
-            }
-        }
-
-        // Si no hemos alcanzado el máximo de intentos, programar otro intento
-        if ($this->intentos + 1 < $this->maxIntentos) {
-            ActualizarRecicladoresdisponibles::dispatch(
-                $this->solicitudId,
-                $this->intentos,
-                $this->intentos + 1,
-                10 // Radio ampliado a 10km
-            )->delay(now()->addSeconds(15)); // También 15 segundos
-
-            Log::info('Programado próximo intento de búsqueda', [
-                'solicitud_id' => $this->solicitudId,
-                'próximo_intento' => $this->intentos + 2,
-                'max_intentos' => $this->maxIntentos
+                'total_intentos' => $this->maxIntentos,
+                'radio_maximo_usado' => $radioActual
             ]);
         } else {
-            Log::info('Finalizada la búsqueda periódica de recicladores', [
+            Log::info('Búsqueda finalizada con recicladores disponibles', [
                 'solicitud_id' => $this->solicitudId,
-                'total_intentos' => $this->intentos + 1
+                'total_recicladores' => count($idsFinal)
             ]);
-
-            // Verificar si después de todos los intentos hay recicladores disponibles
-            $idsFinal = json_decode($solicitud->ids_disponibles, true) ?: [];
-            if (empty($idsFinal)) {
-                $solicitud->estado = 'sin_recicladores';
-                $solicitud->save();
-
-                Log::info('No se encontraron recicladores después de todos los intentos', [
-                    'solicitud_id' => $this->solicitudId
-                ]);
-            }
         }
     }
+}
 
     /**
      * Encuentra nuevos recicladores que no estén ya en la lista de disponibles

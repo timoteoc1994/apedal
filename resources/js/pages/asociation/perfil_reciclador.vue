@@ -4,15 +4,14 @@
     <AuthenticatedLayout>
         <template #header>
             <Link class="text-indigo-600 hover:text-indigo-500" :href="route('asociation.index')">Asociaciones/</Link>
-            <Link class="text-indigo-600 hover:text-indigo-500" :href="route('asociation.index.perfil', { id: asociacion?.asociacion.id })">
+            <Link class="text-indigo-600 hover:text-indigo-500" :href="route('asociation.index.perfil', { id: asociacion?.id })">
                 {{ asociacion?.asociacion.name }}/
             </Link>
-            <Link class="text-indigo-600 hover:text-indigo-500" :href="route('asociation.index.recicladores', { id: asociacion.profile_id })">
+            <Link class="text-indigo-600 hover:text-indigo-500" :href="route('asociation.index.recicladores', { id: asociacion?.id })">
                 Recicladores/
             </Link>
             {{ reciclador.name }}
         </template>
-
         <div class="mx-auto mt-8 max-w-7xl space-y-8">
             <!-- Card principal -->
             <div class="flex flex-col items-center gap-8 rounded-xl bg-white p-8 shadow-xl md:flex-row">
@@ -373,7 +372,7 @@ function getUrlImagen(path: string) {
 }
 
 import MaterialReciclaje from '@/Components/MaterialReciclaje.vue';
-import MiniBarChart from '@/components/MiniBarChart.vue';
+import MiniBarChart from '@/Components/MiniBarChart.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { EyeIcon } from 'lucide-vue-next';

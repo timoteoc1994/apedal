@@ -69,9 +69,8 @@
 
     <AuthenticatedLayout>
         <template #header>
-            Mapa de Zonas
+            <Link class="text-indigo-600 hover:text-indigo-500" :href="route('zonas.index')">Zonas/</Link> Mapa de Zonas
         </template>
-
                 <div class="relative w-full h-[75vh] min-h-[400px]">
                 <MapaZonas 
                     :zonas="zonas" 
@@ -85,8 +84,8 @@
 
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { Head } from '@inertiajs/vue3';
-import MapaZonas from '@/components/MapaZonas.vue';
+import { Head, Link } from '@inertiajs/vue3';
+import MapaZonas from '@/Components/MapaZonas.vue';
 
 
 // Definir props

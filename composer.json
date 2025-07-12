@@ -16,7 +16,9 @@
         "laravel/reverb": "^1.5",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "phpoffice/phpspreadsheet": "^4.4",
         "predis/predis": "^3.0",
+        "spatie/laravel-permission": "^6.20",
         "tightenco/ziggy": "^2.4"
     },
     "require-dev": {

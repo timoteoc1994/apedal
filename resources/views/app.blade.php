@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://kit.fontawesome.com/cc137a3708.js" crossorigin="anonymous"></script>
 
     {{-- Inline script para aplicar dark mode de inmediato --}}
     <script>

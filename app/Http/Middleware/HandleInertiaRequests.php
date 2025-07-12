@@ -35,7 +35,13 @@ class HandleInertiaRequests extends Middleware
     {
         return array_merge(parent::share($request), [
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user()?[
+                    'id' => $request->user()->id,
+                    'name' => $request->user()->name,
+                    'email' => $request->user()->email,
+                    'logo_url' => $request->user()->logo_url, // Assuming you have a logo_url field
+                    'role' => $request->user()->getRoleNames(), // Assuming you have a role assigned
+                ] : null,
             ],
             'flash' => function () use ($request) {
                  return [

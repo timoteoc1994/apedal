@@ -14,7 +14,7 @@
                     <button @click="dropdownOpen = ! dropdownOpen" class="relative flex items-center gap-2">
                         <template v-if="$page.props.auth.user.logo_url">
                             <img
-                                :src="$page.props.auth.user.logo_url"
+                                :src="'storage/'+$page.props.auth.user.logo_url"
                                 alt="Avatar"
                                 class="h-8 w-8 rounded-full border object-cover"
                             />

@@ -64,4 +64,9 @@ class FormulariMensual extends Model
         'polipropileno_precio',
         'archivos_adjuntos',
     ];
+
+    public function asociacion()
+    {
+        return $this->belongsTo(Asociacion::class, 'asociacion_id');
+    }
 }

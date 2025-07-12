@@ -3,11 +3,14 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import DeleteUserForm from "./Partials/DeleteUserForm.vue";
 import UpdatePasswordForm from "./Partials/UpdatePasswordForm.vue";
 import UpdateProfileInformationForm from "./Partials/UpdateProfileInformationForm.vue";
+import { Link, usePage } from '@inertiajs/vue3';
 import { Head } from "@inertiajs/vue3";
 defineProps({
     mustVerifyEmail: Boolean,
     status: String,
 });
+const page = usePage();
+const user = page.props.auth.user;
 </script>
 
 <template>
@@ -28,7 +31,7 @@ defineProps({
                     <UpdatePasswordForm class="max-w-xl" />
                 </div>
 
-                <div class="p-6 sm:p-8 bg-white shadow sm:rounded-lg">
+                <div v-if="user.role == 'Administrador'" class="p-6 sm:p-8 bg-white shadow sm:rounded-lg">
                     <DeleteUserForm class="max-w-xl" />
                 </div>
             </div>

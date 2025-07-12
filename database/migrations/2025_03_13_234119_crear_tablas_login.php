@@ -78,6 +78,7 @@ return new class extends Migration
             $table->unsignedBigInteger('profile_id');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('email_verification_code')->nullable();
+            $table->string('email_referido')->nullable();
             //puntos
             $table->integer('puntos')->default(0);
             $table->rememberToken();

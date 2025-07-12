@@ -23,9 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Registra el middleware de rol
-        $this->app['router']->aliasMiddleware('role', \App\Http\Middleware\CheckRole::class);
-        // Compartir mensajes flash con Inertia
+         // Cambia 'role' por 'custom-role' o 'app-role'
+    $this->app['router']->aliasMiddleware('custom-role', \App\Http\Middleware\CheckRole::class);
 
         
     }

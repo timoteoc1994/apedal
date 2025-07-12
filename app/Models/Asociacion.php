@@ -69,4 +69,5 @@ class Asociacion extends Model
     {
         $this->attributes['name'] = ucwords(strtolower($value));
     }
+    
 }

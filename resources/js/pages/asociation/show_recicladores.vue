@@ -8,6 +8,7 @@
             <Link class="text-indigo-600 hover:text-indigo-500" :href="route('asociation.index.recicladores', { id: nombreAsociacion.id })"> Recicladores/</Link>
             {{ form.name }}
             </template>
+      
         <div class="bg-white shadow-xl rounded-xl p-8 mt-6 mx-auto">
             <form @submit.prevent="submit" class="space-y-6">
                 <div>
@@ -107,14 +108,15 @@
                 </div>
             </form>
         </div>
+       
     </AuthenticatedLayout>
 </template>
 
 <script setup lang="ts">
-import InputError from '@/components/InputError.vue';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import InputError from '@/Components/InputError.vue';
+import { Button } from '@/Components/ui/button';
+import { Input } from '@/Components/ui/input';
+import { Label } from '@/Components/ui/label';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, Link, usePage } from '@inertiajs/vue3';
 import { watch } from 'vue';
