@@ -3,7 +3,7 @@
 
     <AuthenticatedLayout>
         <template #header>
-            <Link :href="route('producto.index')" class="text-indigo-600 hover:scale-105 hover:text-indigo-900"> Tiendas/ </Link>
+            <Link :href="route('producto.index')" class="text-indigo-600 hover:scale-105 hover:text-indigo-900"> Empresas/ </Link>
             {{ tienda.name }}
         </template>
 

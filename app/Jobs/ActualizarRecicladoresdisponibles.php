@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Jobs;
 
 use Illuminate\Bus\Queueable;
@@ -21,18 +22,20 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
     protected $intentos;
     protected $maxIntentos;
     protected $radioKm;
+    protected $ciudad; // 🆕 Agregar ciudad
 
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct($solicitudId, $intentos = 0, $maxIntentos = 4, $radioKm = 3)
+    public function __construct($solicitudId, $intentos = 0, $maxIntentos = 4, $radioKm = 3, $ciudad = null)
     {
         $this->solicitudId = $solicitudId;
         $this->intentos = $intentos;
         $this->maxIntentos = $maxIntentos;
         $this->radioKm = $radioKm;
+        $this->ciudad = $ciudad; // 🆕 Asignar ciudad
     }
 
     /**
@@ -46,7 +49,8 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
         'solicitud_id' => $this->solicitudId,
         'intento' => $this->intentos + 1,
         'max_intentos' => $this->maxIntentos,
-        'radio_km' => $this->radioKm
+        'radio_km' => $this->radioKm,
+        'ciudad' => $this->ciudad // 🆕 Log de ciudad
     ]);
 
     $solicitud = SolicitudRecoleccion::find($this->solicitudId);
@@ -72,7 +76,8 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
         'solicitud_id' => $this->solicitudId,
         'radio_actual' => $radioActual,
         'intento' => $this->intentos + 1,
-        'recicladores_actuales' => count($idsActuales)
+        'recicladores_actuales' => count($idsActuales),
+        'ciudad_filtro' => $this->ciudad // 🆕 Log de ciudad
     ]);
 
     // Buscar nuevos recicladores cercanos usando Redis
@@ -104,7 +109,8 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
             'nuevos_recicladores' => count($nuevosIds),
             'total_recicladores' => count($todosIds),
             'intento' => $this->intentos + 1,
-            'radio_usado' => $radioActual
+            'radio_usado' => $radioActual,
+            'ciudad_filtro' => $this->ciudad // 🆕 Log de ciudad
         ]);
 
         // Cargar datos completos de la solicitud para las notificaciones
@@ -135,7 +141,8 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
                     'reciclador_id' => $reciclador->id,
                     'auth_user_id' => $reciclador->auth_user_id,
                     'solicitud_id' => $solicitud->id,
-                    'distancia_km' => $reciclador->distancia ?? 'N/A'
+                    'distancia_km' => $reciclador->distancia ?? 'N/A',
+                    'ciudad_reciclador' => $reciclador->ciudad ?? 'N/A' // 🆕 Log de ciudad del reciclador
                 ]);
             }
         }
@@ -156,18 +163,20 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
             'solicitud_id' => $this->solicitudId,
             'intento' => $this->intentos + 1,
             'radio_usado' => $radioActual,
-            'recicladores_actuales' => count($idsActuales)
+            'recicladores_actuales' => count($idsActuales),
+            'ciudad_filtro' => $this->ciudad // 🆕 Log de ciudad
         ]);
     }
 
     // Continuar buscando si no hemos alcanzado el máximo de intentos
     if ($this->intentos + 1 < $this->maxIntentos) {
-        // Programar próximo intento
+        // Programar próximo intento - 🆕 Pasar la ciudad al siguiente intento
         ActualizarRecicladoresdisponibles::dispatch(
             $this->solicitudId,
             $this->intentos + 1,
             $this->maxIntentos,
-            $this->radioKm
+            $this->radioKm,
+            $this->ciudad
         )->delay(now()->addSeconds(15)); // Cada 15 segundos
 
         Log::info('Programado próximo intento de búsqueda', [
@@ -205,15 +214,17 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
 
     /**
      * Encuentra nuevos recicladores que no estén ya en la lista de disponibles
+     * 🆕 Filtrados por ciudad
      */
     protected function encontrarNuevosRecicladores($latitud, $longitud, $radioKm = 3, $limite = 10, $excludeIds = [])
     {
-        Log::info('Buscando nuevos recicladores cercanos con Redis', [
+        Log::info('Buscando nuevos recicladores cercanos con Redis y filtro de ciudad', [
             'latitud' => $latitud,
             'longitud' => $longitud,
             'radio_km' => $radioKm,
             'limite' => $limite,
-            'exclude_ids' => count($excludeIds)
+            'exclude_ids' => count($excludeIds),
+            'ciudad_filtro' => $this->ciudad // 🆕 Log de ciudad
         ]);
 
         // Convertir radio de km a metros para Redis
@@ -267,6 +278,40 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
                 if ($locationData) {
                     $locationData = json_decode($locationData, true);
 
+                    // 🆕 AGREGAR LOG PARA VER QUÉ CONTIENE EXACTAMENTE LOCATIONDATA
+                    Log::debug("Datos recuperados desde Redis para reciclador", [
+                        'user_id' => $userId,
+                        'location_data_completo' => $locationData,
+                        'keys_disponibles' => array_keys($locationData ?? []),
+                        'ciudad_value' => $locationData['ciudad'] ?? 'CAMPO_NO_EXISTE',
+                        'ciudad_type' => gettype($locationData['ciudad'] ?? null)
+                    ]);
+
+                    // 🆕 FILTRO POR CIUDAD: Verificar que la ciudad coincida
+                    $ciudadReciclador = $locationData['ciudad'] ?? null;
+                    
+                    // 🆕 Agregar más logs de comparación
+                    Log::debug("Comparación de ciudades", [
+                        'user_id' => $userId,
+                        'ciudad_reciclador_original' => $ciudadReciclador,
+                        'ciudad_requerida_original' => $this->ciudad,
+                        'ciudad_reciclador_trimmed' => trim($ciudadReciclador ?? ''),
+                        'ciudad_requerida_trimmed' => trim($this->ciudad ?? ''),
+                        'comparacion_strcasecmp' => $ciudadReciclador ? strcasecmp(trim($ciudadReciclador), trim($this->ciudad)) : 'null'
+                    ]);
+                    
+                    if (!$ciudadReciclador || 
+                        strcasecmp(trim($ciudadReciclador), trim($this->ciudad)) !== 0) {
+                        
+                        Log::debug("Reciclador filtrado por ciudad diferente", [
+                            'user_id' => $userId,
+                            'ciudad_reciclador' => $ciudadReciclador,
+                            'ciudad_requerida' => $this->ciudad,
+                            'razon' => !$ciudadReciclador ? 'ciudad_null' : 'ciudad_diferente'
+                        ]);
+                        continue; // Saltar este reciclador
+                    }
+
                     // Obtener datos adicionales del reciclador desde DB
                     $reciclador = DB::table('recicladores as r')
                         ->join('auth_users as a', function ($join) use ($userId) {
@@ -294,13 +339,15 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
                         $reciclador->timestamp = $locationData['timestamp'] ?? now()->timestamp;
                         $reciclador->status = $status;
                         $reciclador->distancia = $distanciaMetros / 1000; // Convertir a km
+                        $reciclador->ciudad = $ciudadReciclador; // 🆕 Agregar ciudad
 
                         $recicladoresFiltrados->push($reciclador);
 
-                        Log::info("Nuevo reciclador encontrado", [
+                        Log::info("Nuevo reciclador encontrado (misma ciudad)", [
                             'id' => $reciclador->id,
                             'nombre' => $reciclador->name,
-                            'distancia_km' => $reciclador->distancia
+                            'distancia_km' => $reciclador->distancia,
+                            'ciudad' => $ciudadReciclador // 🆕 Log de ciudad
                         ]);
 
                         // Interrumpir si ya tenemos suficientes
@@ -312,7 +359,10 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
             }
         }
 
-        Log::info("Nuevos recicladores que cumplen todos los criterios: " . $recicladoresFiltrados->count());
+        Log::info("Nuevos recicladores de la misma ciudad que cumplen todos los criterios", [
+            'encontrados' => $recicladoresFiltrados->count(),
+            'ciudad_filtro' => $this->ciudad // 🆕 Log de ciudad
+        ]);
 
         return $recicladoresFiltrados->values();
     }

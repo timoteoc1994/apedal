@@ -3,7 +3,7 @@
 
     <AuthenticatedLayout>
         <template #header>
-            Tiendas
+            Empresas
         </template>
 
         <div class="bg-white shadow-xl rounded-xl p-8 mt-6">

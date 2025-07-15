@@ -17,6 +17,7 @@ use App\Services\FirebaseService;
 use App\Events\NuevaSolicitudInmediata;
 use Illuminate\Support\Facades\Redis;
 use App\Jobs\ActualizarRecicladoresdisponibles;
+use App\Jobs\CancelarSolicitudInmediata;
 
 //websocket
 
@@ -27,164 +28,122 @@ class SolicitudInmediataController extends Controller
      * Busca recicladores cercanos y crea una solicitud inmediata
      */
     public function buscarRecicladores(Request $request)
-{
-    try {
-        // Validar los datos de la solicitud
-        $validatedData = $request->validate([
-            'direccion' => 'required|string|max:255',
-            'referencia' => 'required|string|max:255',
-            'latitud' => 'required|numeric',
-            'longitud' => 'required|numeric',
-            'peso_total' => 'required|numeric|min:0.1',
-            'materiales' => 'required|json',
-            'imagenes.*' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-            'es_inmediata' => 'required',
-            'foto_ubicacion' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
-        $validatedData['es_inmediata'] = filter_var($validatedData['es_inmediata'], FILTER_VALIDATE_BOOLEAN);
-
-        // Obtener el usuario autenticado (ciudadano)
-        $user = Auth::user();
-
-        $rutasImagenes = [];
-        if ($request->hasFile('imagenes')) {
-            foreach ($request->file('imagenes') as $index => $imagen) {
-                $nombreImagen = time() . '_' . $index . '_' . Auth::id() . '.' . $imagen->getClientOriginalExtension();
-                $rutaImagen = $imagen->storeAs('solicitudes', $nombreImagen, 'public');
-                $rutasImagenes[] = $rutaImagen;
-            }
-        }
-
-        // Guardar la foto de ubicación si existe
-        $rutaFotoUbicacion = null;
-        if ($request->hasFile('foto_ubicacion')) {
-            $fotoUbicacion = $request->file('foto_ubicacion');
-            $nombreFotoUbicacion = time() . '_ubicacion_' . Auth::id() . '.' . $fotoUbicacion->getClientOriginalExtension();
-            $rutaFotoUbicacion = $fotoUbicacion->storeAs('solicitudes', $nombreFotoUbicacion, 'public');
-        }
-
-        // Iniciar transacción
-        DB::beginTransaction();
-
-        // Crear la solicitud
-        $solicitud = SolicitudRecoleccion::create([
-            'user_id' => Auth::id(),
-            'asociacion_id' => null,
-            'fecha' => Carbon::now()->format('Y-m-d'),
-            'hora_inicio' => Carbon::now()->format('H:i'),
-            'hora_fin' => Carbon::now()->addMinutes(30)->format('H:i'),
-            'direccion' => $validatedData['direccion'],
-            'referencia' => $validatedData['referencia'],
-            'latitud' => $validatedData['latitud'],
-            'longitud' => $validatedData['longitud'],
-            'peso_total' => $validatedData['peso_total'],
-            'imagen' => json_encode($rutasImagenes),
-            'foto_ubicacion' => $rutaFotoUbicacion,
-            'estado' => 'buscando_reciclador',
-            'ciudad' => $user->ciudadano->ciudad ?? 'No especificada',
-            'es_inmediata' => $validatedData['es_inmediata'],
-            'ids_disponibles' => json_encode([]), // Empezar vacío
-        ]);
-
-        // Guardar materiales
-        $materialesData = json_decode($validatedData['materiales'], true);
-        foreach ($materialesData as $material) {
-            Material::create([
-                'solicitud_id' => $solicitud->id,
-                'tipo' => $material['tipo'],
-                'peso' => $material['peso'],
-                'user_id' => Auth::id(),
+    {
+        try {
+            // Validar los datos de la solicitud
+            $validatedData = $request->validate([
+                'direccion' => 'required|string|max:255',
+                'referencia' => 'required|string|max:255',
+                'latitud' => 'required|numeric',
+                'longitud' => 'required|numeric',
+                'peso_total' => 'required|numeric|min:0.1',
+                'materiales' => 'required|json',
+                'imagenes.*' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                'es_inmediata' => 'required',
+                'foto_ubicacion' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             ]);
-        }
+            $validatedData['es_inmediata'] = filter_var($validatedData['es_inmediata'], FILTER_VALIDATE_BOOLEAN);
 
-        // ❌ ELIMINAR TODA ESTA SECCIÓN - No buscar aquí
-        /*
-        // Buscar recicladores cercanos
-        $recicladores = $this->encontrarRecicladoresCercanos(
-            $solicitud->latitud,
-            $solicitud->longitud,
-            3, // Radio en km
-            10 // Máximo número de recicladores
-        );
+            // Obtener el usuario autenticado (ciudadano)
+            $user = Auth::user();
 
-        if (empty($recicladores)) {
-            // No hay recicladores disponibles
-            $solicitud->estado = 'sin_recicladores';
-            $solicitud->save();
+            $rutasImagenes = [];
+            if ($request->hasFile('imagenes')) {
+                foreach ($request->file('imagenes') as $index => $imagen) {
+                    $nombreImagen = time() . '_' . $index . '_' . Auth::id() . '.' . $imagen->getClientOriginalExtension();
+                    $rutaImagen = $imagen->storeAs('solicitudes', $nombreImagen, 'public');
+                    $rutasImagenes[] = $rutaImagen;
+                }
+            }
+
+            // Guardar la foto de ubicación si existe
+            $rutaFotoUbicacion = null;
+            if ($request->hasFile('foto_ubicacion')) {
+                $fotoUbicacion = $request->file('foto_ubicacion');
+                $nombreFotoUbicacion = time() . '_ubicacion_' . Auth::id() . '.' . $fotoUbicacion->getClientOriginalExtension();
+                $rutaFotoUbicacion = $fotoUbicacion->storeAs('solicitudes', $nombreFotoUbicacion, 'public');
+            }
+
+            // Iniciar transacción
+            DB::beginTransaction();
+
+            // Crear la solicitud
+            $solicitud = SolicitudRecoleccion::create([
+                'user_id' => Auth::id(),
+                'asociacion_id' => null,
+                'fecha' => Carbon::now()->format('Y-m-d'),
+                'hora_inicio' => Carbon::now()->format('H:i'),
+                'hora_fin' => Carbon::now()->addMinutes(30)->format('H:i'),
+                'direccion' => $validatedData['direccion'],
+                'referencia' => $validatedData['referencia'],
+                'latitud' => $validatedData['latitud'],
+                'longitud' => $validatedData['longitud'],
+                'peso_total' => $validatedData['peso_total'],
+                'imagen' => json_encode($rutasImagenes),
+                'foto_ubicacion' => $rutaFotoUbicacion,
+                'estado' => 'buscando_reciclador',
+                'ciudad' => $user->ciudadano->ciudad ?? 'No especificada',
+                'es_inmediata' => $validatedData['es_inmediata'],
+                'ids_disponibles' => json_encode([]), // Empezar vacío
+            ]);
+
+            // Guardar materiales
+            $materialesData = json_decode($validatedData['materiales'], true);
+            foreach ($materialesData as $material) {
+                Material::create([
+                    'solicitud_id' => $solicitud->id,
+                    'tipo' => $material['tipo'],
+                    'peso' => $material['peso'],
+                    'user_id' => Auth::id(),
+                ]);
+            }
+
+
+
+            // ✅ SOLO ESTO - Delegar toda la búsqueda al job
+            Log::info('Iniciando búsqueda de recicladores para solicitud', [
+                'solicitud_id' => $solicitud->id,
+                'latitud' => $solicitud->latitud,
+                'longitud' => $solicitud->longitud
+            ]);
+            Log::info('ciudad del ciudadano'. $user->ciudadano->ciudad ?? 'No especificada');
+            // Iniciar búsqueda inmediatamente con el job
+            ActualizarRecicladoresdisponibles::dispatch($solicitud->id, 0, 16, 3, $user->ciudadano->ciudad ?? 'No especificada')
+                ->delay(now()); // Sin delay - empezar inmediatamente
+
+           
+
 
             DB::commit();
+             // 🆕 NUEVO: Programar cancelación automática después de 5 minutos
+            CancelarSolicitudInmediata::dispatch($solicitud->id)->delay(now()->addMinutes(5));
+            
+
+            // Devolver respuesta optimista
+            return response()->json([
+                'success' => true,
+                'message' => 'Buscando recicladores cercanos... Te notificaremos cuando encontremos algunos.',
+                'data' => [
+                    'solicitud_id' => $solicitud->id,
+                    'tiempo_espera_maximo' => 4, // minutos
+                    'estado' => 'buscando_reciclador',
+                    'mensaje_adicional' => 'La búsqueda puede tomar unos momentos. Mantén la aplicación abierta para recibir notificaciones.'
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error al crear solicitud inmediata', [
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id()
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'No hay recicladores disponibles en este momento. Por favor, intenta agendar para mañana.',
-            ], 404);
+                'message' => 'Error al procesar la solicitud: ' . $e->getMessage(),
+            ], 500);
         }
-
-        // Crear notificaciones para los recicladores encontrados
-        $idsDisponibles = $recicladores
-            ->map(fn($reciclador) => $reciclador->auth_user_id)
-            ->filter()
-            ->values()
-            ->toArray();
-
-        $solicitud->ids_disponibles = json_encode($idsDisponibles);
-        $solicitud->save();
-
-        // Cargar relaciones necesarias para el broadcast
-        $solicitud->load(['authUser', 'authUser.ciudadano', 'materiales']);
-
-        // Enviar notificación WebSocket a cada reciclador disponible
-        foreach ($recicladores as $reciclador) {
-            // Crear notificación en BD
-            DB::table('notificaciones_solicitudes')->insert([
-                'solicitud_id' => $solicitud->id,
-                'reciclador_id' => $reciclador->id,
-                'estado' => 'pendiente',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-        */
-
-        // ✅ SOLO ESTO - Delegar toda la búsqueda al job
-        Log::info('Iniciando búsqueda de recicladores para solicitud', [
-            'solicitud_id' => $solicitud->id,
-            'latitud' => $solicitud->latitud,
-            'longitud' => $solicitud->longitud
-        ]);
-
-        // Iniciar búsqueda inmediatamente con el job
-        ActualizarRecicladoresdisponibles::dispatch($solicitud->id, 0, 16, 3)
-            ->delay(now()); // Sin delay - empezar inmediatamente
-
-        DB::commit();
-
-        // Devolver respuesta optimista
-        return response()->json([
-            'success' => true,
-            'message' => 'Buscando recicladores cercanos... Te notificaremos cuando encontremos algunos.',
-            'data' => [
-                'solicitud_id' => $solicitud->id,
-                'tiempo_espera_maximo' => 4, // minutos
-                'estado' => 'buscando_reciclador',
-                'mensaje_adicional' => 'La búsqueda puede tomar unos momentos. Mantén la aplicación abierta para recibir notificaciones.'
-            ]
-        ], 200);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        
-        Log::error('Error al crear solicitud inmediata', [
-            'error' => $e->getMessage(),
-            'user_id' => Auth::id()
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Error al procesar la solicitud: ' . $e->getMessage(),
-        ], 500);
     }
-}
 
     /**
      * Encuentra recicladores cercanos usando la fórmula Haversine
@@ -240,8 +199,6 @@ class SolicitudInmediataController extends Controller
 
                 continue;
             }
-
-          
         }
 
 

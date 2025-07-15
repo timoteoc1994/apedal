@@ -42,19 +42,18 @@ Route::get('/', function () {
 //sacar a la ruta /dasboard para poner con roles Adminsitrador y Tienda cuando se autentique
 
 
-Route::middleware(['auth', 'role:Administrador,Tienda'])->group(function () {
+Route::middleware(['auth', 'role:Administrador,Tienda,Moderador'])->group(function () {
 
 
-    Route::get('/about', fn() => Inertia::render('About'))->name('about');
 
-    Route::get('users', [UserController::class, 'index'])->name('users.index');
+
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-Route::middleware(['auth', 'role:Administrador'])->group(function () {
+Route::middleware(['auth', 'role:Administrador,Moderador'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -86,6 +85,8 @@ Route::middleware(['auth', 'role:Administrador'])->group(function () {
     Route::patch('/asociation/information/recicladores', [ViewAsociationController::class, 'updaterecicladores'])->name('asociation.index.update.recicladores');
     Route::delete('/asociation_delete/{deudas}', [ViewAsociationController::class, 'delete'])->name('asociation.index.delete');
     Route::delete('/asociation_delete/reciclador/{deudas}', [ViewAsociationController::class, 'deletereciclador'])->name('asociation.index.reciclador.delete');
+    Route::get('/tracking/{id?}', [TrackingController::class, 'show'])->name('tracking.show');
+
 
     // Ruta para mostrar la lista de ciudadanos
     Route::get('/ciudadanos', [CiudadanoController::class, 'index'])->name('ciudadano.index');
@@ -141,7 +142,15 @@ Route::middleware(['auth', 'role:Tienda'])->group(function () {
     Route::get('historial/tienda/productos', [CangeTiendasController::class, 'historial_tienda_productos'])->name('tienda.productos.historial');
 });
 
-Route::get('/tracking/{id?}', [TrackingController::class, 'show'])->name('tracking.show');
+
+Route::middleware(['auth', 'role:Administrador'])->group(function () {
+
+    //rutas usuarios
+    Route::get('users', [UserController::class, 'index'])->name('users.index');
+    Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    Route::post('users', [UserController::class, 'store'])->name('users.store');
+    Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
+});
 
 
 require __DIR__ . '/auth.php';

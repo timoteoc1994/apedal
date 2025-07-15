@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
 
         // Crear roles si no existen
         \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Administrador']);
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Moderador']);
         \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Tienda']);
 
         $user = User::factory()->create([

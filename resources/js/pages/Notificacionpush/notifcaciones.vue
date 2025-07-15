@@ -46,12 +46,14 @@
                     <div class="pt-4">
                         <button
                             type="submit"
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                             :disabled="enviando"
                         >
                             <span v-if="enviando">Enviando notificación...</span>
                             <span v-else>Enviar notificación</span>
                         </button>
+
+         
                     </div>
                 </form>
             </div>
