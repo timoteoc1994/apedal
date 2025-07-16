@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import NavFooter from '@/components/NavFooter.vue';
-import NavMain from '@/components/NavMain.vue';
-import NavUser from '@/components/NavUser.vue';
-import IconDashboard from '@/components/icons/IconDashboard.vue';
-import IconSolicitudes from '@/components/icons/IconSolicitudes.vue';
-import IconAsociaciones from '@/components/icons/IconAsociaciones.vue';
-import IconCiudadanos from '@/components/icons/IconCiudadanos.vue';
-import IconMapa from '@/components/icons/IconMapa.vue';
+import NavFooter from '@/Components/NavFooter.vue';
+import NavMain from '@/Components/NavMain.vue';
+import NavUser from '@/Components/NavUser.vue';
+import IconDashboard from '@/Components/icons/IconDashboard.vue';
+import IconSolicitudes from '@/Components/icons/IconSolicitudes.vue';
+import IconAsociaciones from '@/Components/icons/IconAsociaciones.vue';
+import IconCiudadanos from '@/Components/icons/IconCiudadanos.vue';
+import IconMapa from '@/Components/icons/IconMapa.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/Components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
