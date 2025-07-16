@@ -11,22 +11,22 @@
                
                 <div class="bg-gray-100 p-4 rounded-lg shadow">
                     <img src="/storage/images_plataforma/reciclador-icono.png" alt="Solicitudes" class="w-16 h-16 mx-auto mb-4">
-                    <h1 class="text-5xl font-semibold text-center">{{ recicladoresCount }}</h1>
-                    <p class="text-center">Recicladores </p>
+                    <h1 class="text-5xl font-semibold text-center text-black">{{ recicladoresCount }}</h1>
+                    <p class="text-center text-black">Recicladores </p>
                 </div>
                 
                  <Link :href="route('asociation.index')">
                 <div class="bg-gray-100 p-4 rounded-lg shadow">
                     <img src="/storage/images_plataforma/icono_asociacion.png" alt="Solicitudes" class="w-16 h-16 mx-auto mb-4">
-                    <h1 class="text-5xl font-semibold text-center">{{ asociacionesCount }}</h1>
-                    <p class="text-center">Asociaciones</p>
+                    <h1 class="text-5xl font-semibold text-center text-black">{{ asociacionesCount }}</h1>
+                    <p class="text-center text-black">Asociaciones</p>
                 </div>
                 </Link>
                 <Link :href="route('ciudadano.index')">
                 <div class="bg-gray-100 p-4 rounded-lg shadow">
                     <img src="/storage/images_plataforma/icono_ciudadano.png" alt="Solicitudes" class="w-16 h-16 mx-auto mb-4">
-                    <h1 class="text-5xl font-semibold text-center">{{ ciudadanosCount }}</h1>
-                    <p class="text-center">Ciudadanos</p>
+                    <h1 class="text-5xl font-semibold text-center text-black">{{ ciudadanosCount }}</h1>
+                    <p class="text-center text-black">Ciudadanos</p>
                 </div>
                 </Link>
             </div>

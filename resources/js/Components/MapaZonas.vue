@@ -17,7 +17,7 @@
             <div class="mb-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Mapa</label>
                 <select @change="cambiarTipoMapa" v-model="tipoMapaSeleccionado"
-                    class="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-black">
                     <option value="osm">Mapa Estándar</option>
                     <option value="satellite">Vista Satélite</option>
                     <option value="terrain">Mapa Topográfico</option>
@@ -40,7 +40,7 @@
         <!-- Panel de dibujo flotante -->
         <div class="controls-overlay" v-if="fullscreenMode && dibujando">
             <h3 class="font-bold mb-2 text-blue-700">Modo Dibujo Activo</h3>
-            <p class="text-sm mb-3">Dibuja un polígono en el mapa para crear una nueva zona.</p>
+            <p class="text-sm mb-3 text-black">Dibuja un polígono en el mapa para crear una nueva zona.</p>
             <div class="flex gap-2">
                 <button @click="guardarZona" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex-1"
                     :disabled="!hayPoligono">
