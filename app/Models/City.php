@@ -10,4 +10,9 @@ class City extends Model
 {
     use HasFactory, Notifiable;
     protected $fillable = ['user_id', 'name'];
+
+    public function setNameAttribute($value)
+    {
+        $this->attributes['name'] = ucwords(strtolower($value));
+    }
 }

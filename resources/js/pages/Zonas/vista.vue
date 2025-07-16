@@ -59,6 +59,7 @@
                 </div>
             </div>
         </div>
+        
     </AuthenticatedLayout>
 </template>
 
@@ -75,7 +76,7 @@ const props = defineProps({
 // Función para navegar a una ciudad específica
 const irACiudad = (ciudad) => {
     // Puedes cambiar esta ruta según tu estructura de rutas
-    router.visit(route('zonas.mapa', { ciudad: ciudad.name.toLowerCase() }));
+    router.visit(route('zonas.mapa', { ciudad: ciudad.name}));
     
     // O si prefieres usar el ID:
     // router.visit(route('zonas.ciudad', { id: ciudad.id }));
