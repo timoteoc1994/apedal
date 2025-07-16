@@ -63,12 +63,7 @@ onMounted(() => {
                             >
                                 Iniciar Sesión
                             </Link>
-                            <Link
-                                :href="route('register')"
-                                class="px-6 py-3 bg-white/95 backdrop-blur-sm rounded-xl text-[#5e53e9] hover:bg-white hover:shadow-lg transition-all duration-300 hover:scale-105 font-semibold"
-                            >
-                                Registrarse
-                            </Link>
+
                         </template>
                     </div>
                 </nav>
