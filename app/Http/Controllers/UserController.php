@@ -11,32 +11,35 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = User::with('roles');
+   public function index(Request $request)
+{
+    $query = User::with('roles')
+        ->whereDoesntHave('roles', function($q) {
+            $q->where('name', 'Tienda');
+        });
 
-        // Búsqueda
-        if ($request->search) {
-            $query->where(function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('email', 'like', '%' . $request->search . '%');
-            });
-        }
-
-        // Ordenamiento
-        $sort = $request->sort ?? 'name';
-        $direction = $request->direction ?? 'asc';
-        $query->orderBy($sort, $direction);
-
-        // Obtener todos los roles excepto 'Tienda'
-        $roles = Role::where('name', '!=', 'Tienda')->orderBy('name')->get();
-
-        return Inertia::render('Users/Index', [
-            'users' => $query->paginate(10)->withQueryString(),
-            'filters' => $request->only(['search', 'sort', 'direction']),
-            'roles' => $roles
-        ]);
+    // Búsqueda
+    if ($request->search) {
+        $query->where(function($q) use ($request) {
+            $q->where('name', 'like', '%' . $request->search . '%')
+              ->orWhere('email', 'like', '%' . $request->search . '%');
+        });
     }
+
+    // Ordenamiento
+    $sort = $request->sort ?? 'name';
+    $direction = $request->direction ?? 'asc';
+    $query->orderBy($sort, $direction);
+
+    // Obtener todos los roles excepto 'Tienda'
+    $roles = Role::where('name', '!=', 'Tienda')->orderBy('name')->get();
+
+    return Inertia::render('Users/Index', [
+        'users' => $query->paginate(10)->withQueryString(),
+        'filters' => $request->only(['search', 'sort', 'direction']),
+        'roles' => $roles
+    ]);
+}
 
     public function store(Request $request)
     {

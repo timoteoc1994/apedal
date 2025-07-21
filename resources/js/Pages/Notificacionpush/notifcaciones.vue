@@ -37,11 +37,7 @@
                             <input v-model="form.route" type="text" class="w-full border rounded px-3 py-2" placeholder="/ruta_destino">
                             <p class="text-xs text-gray-500 mt-1">Ruta interna o URL a la que navegará la app al tocar la notificación.</p>
                         </div>
-                        <div>
-                            <label class="block font-semibold mb-1">Imagen (opcional)</label>
-                            <input v-model="form.image" type="url" class="w-full border rounded px-3 py-2" placeholder="https://ejemplo.com/imagen.jpg">
-                            <p class="text-xs text-gray-500 mt-1">URL de una imagen para mostrar en la notificación (algunos dispositivos la soportan).</p>
-                        </div>
+
                     </div>
                     <div class="pt-4">
                         <button

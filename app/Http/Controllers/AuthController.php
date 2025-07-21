@@ -310,7 +310,7 @@ class AuthController extends Controller
             $credentials = $request->validate([
                 'email' => 'required|email',
                 'password' => 'required',
-                'fcm_token' => 'required|string', // Añadir validación para el token FCM
+                'fcm_token' => 'nullable|string', // Añadir validación para el token FCM
             ]);
 
             $user = AuthUser::where('email', $credentials['email'])->first();
@@ -580,14 +580,15 @@ class AuthController extends Controller
 
     public function verificarEmail(Request $request)
     {
+
         try {
             $request->validate([
                 'email' => 'required|email',
-                'code' => 'required'
+                'code' => 'required',
+                'fcm_token' => 'nullable|string', // Añadir validación para token FCM
             ]);
 
-            Log::info('Email: ' . $request->email);
-            Log::info('Código: ' . $request->code);
+
 
             $user = AuthUser::where('email', $request->email)->first();
 
@@ -598,6 +599,7 @@ class AuthController extends Controller
             if ($user->email_verification_code == $request->code) {
                 $user->email_verified_at = now();
                 $user->email_verification_code = null;
+                $user->fcm_token = $request->fcm_token; // Asignar el token FCM
                 $user->save();
 
                 // Generar token de acceso
