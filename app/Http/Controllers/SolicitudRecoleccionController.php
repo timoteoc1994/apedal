@@ -1031,12 +1031,12 @@ class SolicitudRecoleccionController extends Controller
             'user_id' => Auth::id()
         ]);
         $request->validate([
-            'solicitud_id' => 'required|integer|exists:Solicitudes_recoleccion,id',
+            'solicitud_id' => 'required|integer|exists:solicitudes_recoleccion,id',
             'motivo' => 'required|string|max:255',
             'comentario' => 'nullable|string|max:500',
         ]);
 
-        $solicitud = solicitudRecoleccion::find($request->solicitud_id);
+        $solicitud = SolicitudRecoleccion::find($request->solicitud_id);
 
         // Opcional: Verifica que el usuario autenticado sea el que creo la solicitud
         if ($solicitud->user_id !== Auth::id()) {
