@@ -1378,7 +1378,7 @@ public function updateReciclador(Request $request, $id)
             'comentario' => 'nullable|string|max:500',
         ]);
 
-        $solicitud = SolicitudRecoleccion::find($request->solicitud_id);
+        $solicitud = solicitudRecoleccion::find($request->solicitud_id);
 
         // Opcional: Verifica que el usuario autenticado sea el dueño o tenga permisos
         if ($solicitud->reciclador_id !== Auth::id()) {

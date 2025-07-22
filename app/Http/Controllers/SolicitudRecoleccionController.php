@@ -1036,7 +1036,7 @@ class SolicitudRecoleccionController extends Controller
             'comentario' => 'nullable|string|max:500',
         ]);
 
-        $solicitud = SolicitudRecoleccion::find($request->solicitud_id);
+        $solicitud = solicitudRecoleccion::find($request->solicitud_id);
 
         // Opcional: Verifica que el usuario autenticado sea el que creo la solicitud
         if ($solicitud->user_id !== Auth::id()) {
