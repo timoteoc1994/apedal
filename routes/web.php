@@ -152,5 +152,7 @@ Route::middleware(['auth', 'role:Administrador'])->group(function () {
     Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
 });
 
-
+Route::get('/privacidad', function () {
+    return Inertia::render('Privacidad');
+})->name('privacidad');
 require __DIR__ . '/auth.php';
