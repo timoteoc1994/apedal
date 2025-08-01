@@ -155,4 +155,7 @@ Route::middleware(['auth', 'role:Administrador'])->group(function () {
 Route::get('/privacidad', function () {
     return Inertia::render('Privacidad');
 })->name('privacidad');
+Route::get('/soporte', function () {
+    return Inertia::render('Soporte');
+})->name('soporte');
 require __DIR__ . '/auth.php';
