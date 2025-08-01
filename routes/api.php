@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActualizarPerfilController;
+use App\Http\Controllers\Api\EliminarCuenta;
 use App\Http\Controllers\ApiProductoController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\ImpactoAmbientalController;
@@ -74,6 +75,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/update', [ActualizarPerfilController::class, 'update']);
     Route::post('/profile/update-with-image', [ActualizarPerfilController::class, 'updateWithImage']);
     Route::post('/profile/upload_referential_images', [ActualizarPerfilController::class, 'uploadReferentialImages']);
+    //eliminar cuenta
+    Route::delete('/eliminarCuenta', [EliminarCuenta::class, 'eliminarCuenta']);
 
     // Rutas para ciudadanos
     Route::middleware(['custom-role:ciudadano'])->prefix('ciudadano')->group(function () {
