@@ -10,6 +10,7 @@ use App\Events\LocationUpdate;
 use Illuminate\Support\Facades\Log;
 use App\Models\Reciclador;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Validation\ValidationException;
 use App\Events\UbicacionActualizada;
 
@@ -39,6 +40,28 @@ class UbicacionreciladoresController extends Controller
         $reciclador = Reciclador::where('id', $user->profile_id)->first();
         $status = $reciclador->status ?? 'disponible';
 
+        // 🆕 Cachear perfil del reciclador en Redis para búsquedas rápidas
+        if ($reciclador) {
+            $profileData = [
+                'id' => $reciclador->id,
+                'name' => $reciclador->name,
+                'telefono' => $reciclador->telefono,
+                'logo_url' => $reciclador->logo_url,
+                'asociacion_id' => $reciclador->asociacion_id,
+                'ciudad' => $reciclador->ciudad ?? 'No especificada',
+                'status' => $status,
+                'cached_at' => now()->timestamp
+            ];
+            Redis::setex("recycler:profile:{$user->id}", 3600, json_encode($profileData)); // Cache por 1 hora
+
+            Log::debug('Perfil del reciclador cacheado en Redis', [
+                'user_id' => $user->id,
+                'reciclador_id' => $reciclador->id,
+                'status' => $status,
+                'ciudad' => $reciclador->ciudad ?? 'No especificada'
+            ]);
+        }
+
         // Datos de ubicación - aquí el timestamp ya es un objeto Carbon
         $locationData = [
             'auth_user_id' => $user->id,
@@ -46,6 +69,7 @@ class UbicacionreciladoresController extends Controller
             'longitude' => $validated['longitude'],
             'timestamp' => $timestamp->toIso8601String(), // Ahora sí funcionará
             'status' => $status,
+            'ciudad' => $reciclador->ciudad ?? 'No especificada', // 🆕 Añadir ciudad
             'updated_at' => Carbon::now()->toIso8601String(),
         ];
 

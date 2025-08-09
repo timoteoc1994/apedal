@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ActualizarPuntosCiudadano;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use App\Models\AuthUser; 
+use App\Models\AuthUser;
+use App\Models\Puntos;
 
 class GuardarReferedo extends Controller
 {
@@ -47,10 +49,16 @@ class GuardarReferedo extends Controller
                     'message' => 'No puedes referirte a ti mismo'
                 ], 400);
             }
+            //cargar puntos
+            $puntos= Puntos::first();
 
             // Actualizar el email_referido del usuario
             $usuario->email_referido = $request->email_referido;
+            $usuario->puntos += $puntos->puntos_reciclado_referido; // Asignar puntos por referido
             $usuario->save();
+
+            //actualizar enviar por webscoket los puntos
+            ActualizarPuntosCiudadano::dispatch($usuario->id, $usuario->puntos);
 
             // Opcional: Buscar el usuario referido para obtener más información
             $usuarioReferido = AuthUser::where('email', $request->email_referido)->first();

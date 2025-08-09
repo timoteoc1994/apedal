@@ -312,26 +312,76 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
                         continue; // Saltar este reciclador
                     }
 
-                    // Obtener datos adicionales del reciclador desde DB
-                    $reciclador = DB::table('recicladores as r')
-                        ->join('auth_users as a', function ($join) use ($userId) {
-                            $join->on('r.id', '=', 'a.profile_id')
-                                ->where('a.id', '=', $userId);
-                        })
-                        ->select(
-                            'r.id',
-                            'r.name',
-                            'r.telefono',
-                            'r.logo_url',
-                            'r.asociacion_id',
-                            'a.id as auth_user_id',
-                            'r.estado'
-                        )
-                        ->first();
+                    // 🔧 FIX: Obtener datos del reciclador desde Redis
+                    $recicladorData = Redis::get("recycler:profile:{$userId}");
+                    
+                    if ($recicladorData) {
+                        $recicladorData = json_decode($recicladorData, true);
+                        
+                        // Crear objeto similar al que devolvía la BD
+                        $reciclador = (object) [
+                            'id' => $recicladorData['id'] ?? null,
+                            'name' => $recicladorData['name'] ?? 'Sin nombre',
+                            'telefono' => $recicladorData['telefono'] ?? null,
+                            'logo_url' => $recicladorData['logo_url'] ?? null,
+                            'asociacion_id' => $recicladorData['asociacion_id'] ?? null,
+                            'auth_user_id' => $userId,
+                            'estado_redis' => $status
+                        ];
 
-                    // Verificar que la cuenta esté activa
-                    if ($reciclador && (strcasecmp($reciclador->estado, 'Activo') === 0 ||
-                        strcasecmp($reciclador->estado, 'activo') === 0)) {
+                        Log::debug("Datos del reciclador desde Redis", [
+                            'user_id' => $userId,
+                            'reciclador_data_keys' => array_keys($recicladorData),
+                            'status_redis' => $status
+                        ]);
+                    } else {
+                        // Fallback: Si no está en Redis, buscar en BD y cachear
+                        Log::info("Reciclador no encontrado en Redis, consultando BD", ['user_id' => $userId]);
+                        
+                        $recicladorDB = DB::table('recicladores as r')
+                            ->join('auth_users as a', function ($join) use ($userId) {
+                                $join->on('r.id', '=', 'a.profile_id')
+                                    ->where('a.id', '=', $userId);
+                            })
+                            ->select(
+                                'r.id',
+                                'r.name',
+                                'r.telefono',
+                                'r.logo_url',
+                                'r.asociacion_id',
+                                'a.id as auth_user_id',
+                                'r.estado'
+                            )
+                            ->first();
+
+                        if ($recicladorDB) {
+                            // Cachear en Redis para próximas consultas (1 hora)
+                            $profileData = [
+                                'id' => $recicladorDB->id,
+                                'name' => $recicladorDB->name,
+                                'telefono' => $recicladorDB->telefono,
+                                'logo_url' => $recicladorDB->logo_url,
+                                'asociacion_id' => $recicladorDB->asociacion_id,
+                                'estado_bd' => $recicladorDB->estado,
+                                'cached_at' => now()->timestamp
+                            ];
+                            Redis::setex("recycler:profile:{$userId}", 3600, json_encode($profileData));
+                            
+                            $reciclador = $recicladorDB;
+                            $reciclador->estado_redis = $status;
+                            
+                            Log::info("Reciclador cacheado en Redis desde BD", [
+                                'user_id' => $userId,
+                                'estado_bd' => $recicladorDB->estado
+                            ]);
+                        } else {
+                            $reciclador = null;
+                            Log::warning("Reciclador no encontrado ni en Redis ni en BD", ['user_id' => $userId]);
+                        }
+                    }
+
+                    // 🔧 FIX: Verificar estado solo desde Redis (disponible)
+                    if ($reciclador && ($status === 'disponible')) {
 
                         // Añadir datos de ubicación y distancia
                         $reciclador->latitude = $locationData['latitude'] ?? 0;
@@ -343,11 +393,13 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
 
                         $recicladoresFiltrados->push($reciclador);
 
-                        Log::info("Nuevo reciclador encontrado (misma ciudad)", [
+                        Log::info("Nuevo reciclador encontrado (estado desde Redis)", [
                             'id' => $reciclador->id,
                             'nombre' => $reciclador->name,
+                            'estado_redis' => $status,
                             'distancia_km' => $reciclador->distancia,
-                            'ciudad' => $ciudadReciclador // 🆕 Log de ciudad
+                            'ciudad' => $ciudadReciclador,
+                            'auth_user_id' => $userId
                         ]);
 
                         // Interrumpir si ya tenemos suficientes

@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActualizarPerfilController;
-use App\Http\Controllers\Api\EliminarCuenta;
+use App\Http\Controllers\EliminarCuenta;
 use App\Http\Controllers\ApiProductoController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\ImpactoAmbientalController;
