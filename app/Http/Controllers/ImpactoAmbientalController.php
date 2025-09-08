@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Models\Material;
 
 class ImpactoAmbientalController extends Controller
@@ -15,16 +16,54 @@ class ImpactoAmbientalController extends Controller
      */
     public function obtenerEstadisticasPorMes(Request $request)
     {
+
         try {
-            $anio = $request->query('anio');
-            $mes = $request->query('mes');
+            // Extraer posible payload anidado en 'request'
+            $payload = $request->input('request', null);
+
+            // Si viene como JSON string, decodificar
+            if (is_string($payload)) {
+                $decoded = json_decode($payload, true);
+                if (is_array($decoded)) $payload = $decoded;
+            }
+
+            if (is_object($payload)) $payload = (array) $payload;
+
+            if (is_array($payload) && (array_key_exists('anios', $payload) || array_key_exists('meses', $payload))) {
+                $years = $payload['anios'] ?? [];
+                $months = $payload['meses'] ?? [];
+            } else {
+                // Fallback: buscar en params o body top-level
+                $years = $request->input('anios', $request->input('anio', $request->query('anio')));
+                $months = $request->input('meses', $request->input('mes', $request->query('mes')));
+
+                // También admitir propiedades directas en $request
+                if ($years === null) $years = $request->anios ?? $request->anio ?? [];
+                if ($months === null) $months = $request->meses ?? $request->mes ?? [];
+            }
+
+            // Normalizar a arrays (acepta CSV en string también)
+            if (!is_array($years)) {
+                if (is_string($years) && strpos($years, ',') !== false) $years = array_map('trim', explode(',', $years));
+                else $years = $years === null ? [] : [$years];
+            }
+            if (!is_array($months)) {
+                if (is_string($months) && strpos($months, ',') !== false) $months = array_map('trim', explode(',', $months));
+                else $months = $months === null ? [] : [$months];
+            }
+
+            // Convertir a enteros, filtrar rangos válidos, eliminar duplicados y ordenar
+            $years = array_values(array_unique(array_filter(array_map('intval', $years), function ($y) { return $y > 0; })));
+            sort($years);
+            $months = array_values(array_unique(array_filter(array_map('intval', $months), function ($m) { return $m >= 1 && $m <= 12; })));
+            sort($months);
 
             // Validar parámetros
-            if (!$anio || !$mes) {
+            if (empty($years) || empty($months)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Anio y mes son requeridos',
-                    'errors' => ['Faltan parámetros anio y/o mes']
+                    'message' => 'Años y meses son requeridos',
+                    'errors' => ['Faltan parámetros anios y/o meses o valores inválidos']
                 ], 400);
             }
 
@@ -33,7 +72,15 @@ class ImpactoAmbientalController extends Controller
 
             // Aquí irían las consultas reales a la base de datos
             // Por ahora uso datos de ejemplo
-            $estadisticas = $this->generarEstadisticasEjemplo($anio, $mes, $usuario_id);
+            $estadisticas = $this->generarEstadisticasEjemplo($years, $months, $usuario_id);
+
+                // Crear una versión con cero inicial para meses ("01","02",...)
+                $meses_padded = array_map(function ($m) {
+                    return str_pad((string)$m, 2, '0', STR_PAD_LEFT);
+                }, $months);
+
+                // Logear los valores normalizados para facilitar debug
+                Log::info('Años y meses normalizados', ['anios' => $years, 'meses' => $months, 'meses_padded' => $meses_padded]);
 
             return response()->json([
                 'success' => true,
@@ -52,27 +99,51 @@ class ImpactoAmbientalController extends Controller
     /**
      * Generar datos de ejemplo para las estadísticas
      */
-    private function generarEstadisticasEjemplo($anio, $mes, $usuario_id)
+    private function generarEstadisticasEjemplo(array $anios, array $meses, $usuario_id)
     {
         //sumar todos los pesos totales donde 
         //papel
-        $suma_papel = Material::where('user_id', $usuario_id)->where('tipo', 'papel')->whereYear('created_at', $anio)->whereMonth('created_at', $mes)->sum('peso_revisado');
+        $suma_papel = Material::where('user_id', $usuario_id)
+            ->where('tipo', 'papel')
+            ->whereIn(DB::raw('YEAR(created_at)'), $anios)
+            ->whereIn(DB::raw('MONTH(created_at)'), $meses)
+            ->sum('peso_revisado');
         //tetrapak
         //$suma_tetrapak = Material::where('user_id', $usuario_id)->where('tipo', 'tetrapak')->whereYear('created_at', $anio)->whereMonth('created_at', $mes)->sum('peso_revisado');
         //botellasPET
-        $suma_botellasPET = Material::where('user_id', $usuario_id)->where('tipo', 'botellasPET')->whereYear('created_at', $anio)->whereMonth('created_at', $mes)->sum('peso_revisado');
+        $suma_botellasPET = Material::where('user_id', $usuario_id)
+            ->where('tipo', 'botellasPET')
+            ->whereIn(DB::raw('YEAR(created_at)'), $anios)
+            ->whereIn(DB::raw('MONTH(created_at)'), $meses)
+            ->sum('peso_revisado');
         //plasticosSuaves
-        $suma_plasticosSuaves = Material::where('user_id', $usuario_id)->where('tipo', 'plasticosSuaves')->whereYear('created_at', $anio)->whereMonth('created_at', $mes)->sum('peso_revisado');
+        $suma_plasticosSuaves = Material::where('user_id', $usuario_id)
+            ->where('tipo', 'plasticosSuaves')
+            ->whereIn(DB::raw('YEAR(created_at)'), $anios)
+            ->whereIn(DB::raw('MONTH(created_at)'), $meses)
+            ->sum('peso_revisado');
         //plasticosSoplado
-        $suma_plasticosSoplado = Material::where('user_id', $usuario_id)->where('tipo', 'plasticosSoplado')->whereYear('created_at', $anio)->whereMonth('created_at', $mes)->sum('peso_revisado');
+        $suma_plasticosSoplado = Material::where('user_id', $usuario_id)
+            ->where('tipo', 'plasticosSoplado')
+            ->whereIn(DB::raw('YEAR(created_at)'), $anios)
+            ->whereIn(DB::raw('MONTH(created_at)'), $meses)
+            ->sum('peso_revisado');
         //plasticosRigidos
-        $suma_plasticosRigidos = Material::where('user_id', $usuario_id)->where('tipo', 'plasticosRigidos')->whereYear('created_at', $anio)->whereMonth('created_at', $mes)->sum('peso_revisado');
+        $suma_plasticosRigidos = Material::where('user_id', $usuario_id)
+            ->where('tipo', 'plasticosRigidos')
+            ->whereIn(DB::raw('YEAR(created_at)'), $anios)
+            ->whereIn(DB::raw('MONTH(created_at)'), $meses)
+            ->sum('peso_revisado');
         //vidrio
         //$suma_vidrio = Material::where('user_id', $usuario_id)->where('tipo', 'vidrio')->whereYear('created_at', $anio)->whereMonth('created_at', $mes)->sum('peso_revisado');
         //pilas
         //$suma_pilas = Material::where('user_id', $usuario_id)->where('tipo', 'pilas')->whereYear('created_at', $anio)->whereMonth('created_at', $mes)->sum('peso_revisado');
         //latas
-        $suma_latas = Material::where('user_id', $usuario_id)->where('tipo', 'latas')->whereYear('created_at', $anio)->whereMonth('created_at', $mes)->sum('peso_revisado');
+        $suma_latas = Material::where('user_id', $usuario_id)
+            ->where('tipo', 'latas')
+            ->whereIn(DB::raw('YEAR(created_at)'), $anios)
+            ->whereIn(DB::raw('MONTH(created_at)'), $meses)
+            ->sum('peso_revisado');
         //metales
         //$suma_metales = Material::where('user_id', $usuario_id)->where('tipo', 'metales')->whereYear('created_at', $anio)->whereMonth('created_at', $mes)->sum('peso_revisado');
         //electrodomesticos
@@ -138,9 +209,14 @@ class ImpactoAmbientalController extends Controller
         if ($evitado_emitir_admosfera_aluminio > 0) $impactos_latas[] = "Se ha evitado emitir a la atmósfera " . round($evitado_emitir_admosfera_aluminio, 0) . " Kg de CO2";
         if ($evitado_consumo_kwh_aluminio > 0) $impactos_latas[] = "Se ha evitado el consumo de " . round($evitado_consumo_kwh_aluminio, 0) . " KWh de energía";
 
+        // Para compatibilidad, devolvemos los arrays y también un valor representativo (primer año/mes)
         $estadisticas = [
-            'anio' => (int)$anio,
-            'mes' => (int)$mes,
+            'anios' => $anios,
+            'meses' => $meses,
+                // También incluimos la versión con cero inicial para el frontend si la necesita
+                'meses_padded' => array_map(function ($m) { return str_pad((string)$m, 2, '0', STR_PAD_LEFT); }, $meses),
+            'anio' => (int)($anios[0] ?? 0),
+            'mes' => (int)($meses[0] ?? 0),
             'usuario_id' => $usuario_id,
 
             'papel' => [

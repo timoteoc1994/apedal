@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use App\Services\FirebaseService;
 use Kreait\Firebase\Messaging\CloudMessage;
 use App\Events\EliminacionSolicitud;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 
 class MostrarSolicitudesController extends Controller
@@ -93,14 +94,14 @@ class MostrarSolicitudesController extends Controller
     {
         $solicitudes = SolicitudRecoleccion::where('asociacion_id', Auth::id())
             ->where('estado', 'buscando_reciclador')
-            ->select('id', 'user_id', 'asociacion_id', 'hora_inicio', 'hora_fin', 'peso_total', 'estado', 'created_at')
+            ->select('id', 'user_id', 'asociacion_id', 'hora_inicio', 'hora_fin', 'peso_total', 'estado', 'created_at','referencia')
             ->latest()
             ->get();
 
         foreach ($solicitudes as $solicitud) {
             $solicitud->user = AuthUser::with(['ciudadano' => function ($query) {
                 // Si también quieres filtrar campos del ciudadano
-                $query->select('id', 'name', 'logo_url', 'telefono');
+                $query->select('id', 'name', 'logo_url', 'telefono', 'nickname');
             }])
                 ->select('id', 'email', 'profile_id') // Selecciona solo los campos necesarios del usuario
                 ->find($solicitud->user_id);
@@ -155,10 +156,12 @@ class MostrarSolicitudesController extends Controller
             $profile = null;
 
             $profileData = $request->validate([
-                'name' => 'required|string',
+                'name' => 'required|string|unique:recicladores,name',
                 'telefono' => 'required|string',
                 'estado' => 'required|string',
-            ]);
+                'genero' => 'required|string',
+                'fecha_nacimiento' => 'required|date|before_or_equal:'.Carbon::now()->subYears(10)->toDateString(),
+            ],['fecha_nacimiento.before_or_equal' => 'La fecha de nacimiento debe ser antes de '.Carbon::now()->subYears(10)->toDateString()],['name.unique' => 'Este nombre ya se encuentra en uso, por favor elige otro.']);
 
             //llamos a los datos de la asociacion para ponerle la misma ciudad y tambien su id
             $asociacion = AuthUser::with('asociacion')->find(Auth::id());
@@ -264,6 +267,8 @@ class MostrarSolicitudesController extends Controller
                 'total_recolecciones' => 0, // Debes obtener esto de otra tabla o calcularlo
                 'total_kg' => 23, // Debes obtener esto de otra tabla o calcularlo
                 'rating' => 0, // Debes obtener esto de otra tabla o calcularlo
+                'genero' => $user->reciclador->genero,
+                'fecha_nacimiento' => $user->reciclador->fecha_nacimiento,
             ];
 
             return response()->json([

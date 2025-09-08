@@ -24,6 +24,9 @@ class Ciudadano extends Model
         'ciudad',
         'logo_url',
         'referencias_ubicacion',
+        'tipousuario',
+        'genero',
+        'fecha_nacimiento',
     ];
 
 

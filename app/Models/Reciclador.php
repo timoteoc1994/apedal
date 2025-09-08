@@ -25,6 +25,8 @@ class Reciclador extends Model
         'estado',
         'logo_url',
         'is_new',
+        'genero',
+        'fecha_nacimiento',
     ];
 
     /**

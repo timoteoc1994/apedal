@@ -113,10 +113,23 @@
                             <td class="text-center">{{ datos.lona_precio }}</td>
                             <td class="text-center">{{ datos.caucho_kilos }}</td>
                             <td class="text-center">{{ datos.caucho_precio }}</td>
-                            <td class="text-center">{{ datos.fomix_kilos }}</td>
-                            <td class="text-center">{{ datos.fomix_precio }}</td>
+                            <td class="text-center">{{ datos.espuma_flex_kilos }}</td>
+                            <td class="text-center">{{ datos.espuma_flex_precio }}</td>
                             <td class="text-center">{{ datos.polipropileno_kilos }}</td>
                             <td class="text-center">{{ datos.polipropileno_precio }}</td>
+
+                            <td class="text-center">{{ datos.polipropileno_expandido_kilos }}</td>
+                            <td class="text-center">{{ datos.polipropileno_expandido_precio }}</td>
+
+                            <td class="text-center">{{ datos.otro_material_1_kilos }}</td>
+                            <td class="text-center">{{ datos.otro_material_1_precio }}</td>
+
+                            <td class="text-center">{{ datos.otro_material_2_kilos }}</td>
+                            <td class="text-center">{{ datos.otro_material_2_precio }}</td>
+
+                            <td class="text-center">{{ datos.otro_material_3_kilos }}</td>
+                            <td class="text-center">{{ datos.otro_material_3_precio }}</td>
+
                             <td class="text-center">{{ datos.total_kilos }}</td>
                             <td class="text-center">
                                 <template v-if="datos.archivos_adjuntos">
@@ -280,11 +293,21 @@ const headers = [
     { key: 'caucho_kilos', label: 'Caucho Kilos' },
     { key: 'caucho_precio', label: 'Caucho Precio' },
 
-    { key: 'fomix_kilos', label: 'Fomix Kilos' },
-    { key: 'fomix_precio', label: 'Fomix Precio' },
+    { key: 'espuma_flex_kilos', label: 'Espuma Flex Kilos' },
+    { key: 'espuma_flex_precio', label: 'Espuma Flex Precio' },
 
     { key: 'polipropileno_kilos', label: 'Polipropileno Kilos' },
     { key: 'polipropileno_precio', label: 'Polipropileno Precio' },
+
+    { key: 'polipropileno_expandido_kilos', label: 'Polipropileno Expandido Kilos' },
+    { key: 'polipropileno_expandido_precio', label: 'Polipropileno Expandido Precio' },
+
+    { key: 'otro_material_1_kilos', label: 'Otro Material 1 Kilos' },
+    { key: 'otro_material_1_precio', label: 'Otro Material 1 Precio' },
+    { key: 'otro_material_2_kilos', label: 'Otro Material 2 Kilos' },
+    { key: 'otro_material_2_precio', label: 'Otro Material 2 Precio' },
+    { key: 'otro_material_3_kilos', label: 'Otro Material 3 Kilos' },
+    { key: 'otro_material_3_precio', label: 'Otro Material 3 Precio' },
 
     { key: 'total_kilos', label: 'Total Kilos' },
     { key: 'archivos_adjuntos', label: 'Archivos Adjuntos' },

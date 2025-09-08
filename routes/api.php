@@ -25,6 +25,7 @@ use App\Models\AppVersion;
 use App\Http\Controllers\FormulariMensualController;
 use App\Http\Controllers\GuardarReferedo;
 use App\Http\Controllers\RankingController;
+use App\Http\Controllers\SoporteController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -57,6 +58,7 @@ Route::middleware('auth:sanctum')->post('/update-fcm-token', function (Request $
         'success' => true,
         'message' => 'Token FCM actualizado correctamente'
     ]);
+    
 });
 
 //rutas control de versiones
@@ -77,6 +79,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/upload_referential_images', [ActualizarPerfilController::class, 'uploadReferentialImages']);
     //eliminar cuenta
     Route::delete('/eliminarCuenta', [EliminarCuenta::class, 'eliminarCuenta']);
+    //soporte
+     Route::post('/soporte', [SoporteController::class, 'index']);
 
     // Rutas para ciudadanos
     Route::middleware(['custom-role:ciudadano'])->prefix('ciudadano')->group(function () {
@@ -102,7 +106,7 @@ Route::middleware('auth:sanctum')->group(function () {
         //Obtener asociaciones para el mapa
         Route::get('/asociaciones', [MapaAsocicacion::class, 'getAsociaciones']);
         //obtener impacto ambiental del ciudadano
-        Route::get('/impacto-ambiental', [ImpactoAmbientalController::class, 'obtenerEstadisticasPorMes']);
+        Route::post('/impacto-ambiental', [ImpactoAmbientalController::class, 'obtenerEstadisticasPorMes']);
 
         //cancelar solicitud por parte del ciudadano
         Route::post('/cancelar_solicitud_ciudadano', [SolicitudRecoleccionController::class, 'cancelar_solicitud_ciudadano']);
@@ -125,8 +129,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Rutas para recicladores
     Route::middleware(['custom-role:reciclador'])->prefix('reciclador')->group(function () {
-        Route::get('/asignaciones', [RecicladorController::class, 'getAsignaciones']);
-        Route::put('/asignaciones/{id}/actualizar', [RecicladorController::class, 'updateAsignacion']);
         //actualizar estado de un reciclador
         Route::get('/estado', [RecicladorController::class, 'getEstado']);
         Route::put('/actualizar/estado', [RecicladorController::class, 'updateStatus']);

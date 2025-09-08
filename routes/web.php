@@ -11,10 +11,12 @@ use Inertia\Inertia;
 use App\Http\Controllers\CityController;
 use App\Http\Controllers\CiudadanoController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EstadisticaControlador;
 use App\Http\Controllers\MatrizRecuperacionController;
 use App\Http\Controllers\NotificacionPush;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\PuntosController;
+use App\Http\Controllers\SoporteController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\ViewAsociationController;
 use App\Http\Controllers\ZonaController;
@@ -133,6 +135,18 @@ Route::middleware(['auth', 'role:Administrador,Moderador'])->group(function () {
     Route::get('/matrizrecuperacion', [MatrizRecuperacionController::class, 'index'])->name('matrizrecuperacion.index');
 
      Route::get('descargar_excel', [MatrizRecuperacionController::class, 'descargar_excel'])->name('descargar_excel');
+
+     //Estadisticas solicitudes
+     Route::get('/estadisticasolicitudes', [EstadisticaControlador::class, 'index'])->name('estadisticasolicitudes.index');
+
+    // Obtener asociaciones filtradas por ciudad(s)
+    Route::get('/estadistica/asociaciones', [EstadisticaControlador::class, 'asociacionesPorCiudad'])->name('estadistica.asociaciones');
+
+     //Ayuda y soporte
+        Route::get('/ayuda_soporte', [SoporteController::class, 'indexweb'])->name('ayuda_soporte.index');
+    // cambiar estado de un soporte
+    Route::patch('/ayuda_soporte/{soporte}/estado', [SoporteController::class, 'updateEstado'])->name('ayuda_soporte.update.estado');
+
 });
 
 Route::middleware(['auth', 'role:Tienda'])->group(function () {

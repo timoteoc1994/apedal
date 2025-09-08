@@ -9,6 +9,7 @@ use App\Models\Reciclador;
 use App\Models\Asociacion;
 use App\Models\City;
 use App\Models\Puntos;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -27,8 +28,8 @@ class AuthController extends Controller
         Log::info('Datos recibidos: ' . json_encode($request->all()));
         try {
             // Validar datos comunes
-            $common = $request->validate([
-                'email' => 'required|email|unique:auth_users,email',
+             $common = $request->validate([
+                'email' => 'required|email',
                 'password' => [
                     'required',
                     'string',
@@ -37,11 +38,40 @@ class AuthController extends Controller
                     'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'
                 ],
                 'role' => 'required|in:ciudadano,reciclador,asociacion',
-                'fcm_token' => 'nullable|string', // Añadir validación para token FCM
-
+                'fcm_token' => 'nullable|string',
             ], [
                 'password.regex' => 'La contraseña debe tener al menos una mayúscula, una minúscula, un número y un carácter especial.'
             ]);
+
+            // Si ya existe un usuario verificado con ese correo => error
+            $existingVerified = AuthUser::where('email', $common['email'])->whereNotNull('email_verified_at')->first();
+            if ($existingVerified) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El correo electrónico ya está registrado'
+                ], 400);
+            }
+
+            // Si existe un usuario NO verificado => eliminamos ese registro (y su perfil) para permitir re-registro
+            $existingUnverified = AuthUser::where('email', $common['email'])->whereNull('email_verified_at')->first();
+            if ($existingUnverified) {
+                try {
+                    if ($existingUnverified->profile_id) {
+                        if ($existingUnverified->role === 'ciudadano') {
+                            Ciudadano::destroy($existingUnverified->profile_id);
+                        } elseif ($existingUnverified->role === 'reciclador') {
+                            Reciclador::destroy($existingUnverified->profile_id);
+                        } elseif ($existingUnverified->role === 'asociacion') {
+                            Asociacion::destroy($existingUnverified->profile_id);
+                        }
+                        //eliminar el registro auth
+                        $existingUnverified->delete();
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('No se pudo eliminar perfil antiguo: ' . $e->getMessage());
+                }
+                $existingUnverified->delete();
+            }
 
             // Validar datos específicos según el rol
             $profileData = [];
@@ -49,13 +79,22 @@ class AuthController extends Controller
 
             if ($common['role'] === 'ciudadano') {
                 $profileData = $request->validate([
-                    'name' => 'required|string',
-                    'nickname' => 'required|string',
+                    'name' => 'required|string|unique:ciudadanos,name',
+                    'nickname' => 'required|string|unique:ciudadanos,nickname',
                     'direccion' => 'required|string',
                     'ciudad' => 'required|string',
-                    'telefono' => 'required|string',
+                    'telefono' => 'required|digits:10',
                     'referencias_ubicacion' => 'required|string',
-                ]);
+                    'tipousuario' => 'required|string',
+                    'fecha_nacimiento' => 'required|date|before_or_equal:'.Carbon::now()->subYears(10)->toDateString(),
+                    'genero' => 'required|string',
+                ],
+                ['name.unique' => 'Este nombre ya se encuentra en uso, por favor elige otro.'],
+                [
+                    'nickname.unique' => 'Este nickname ya se encuentra en uso, por favor elige otro.',
+                ],[
+                    'fecha_nacimiento.before_or_equal' => 'La fecha de nacimiento debe ser antes de '.Carbon::now()->subYears(10)->toDateString(),
+                ] );
                 //puntos
                 //1.- comparar si la fecha cae dentro de una promocional con mi tabla puntos
                 $datospuntos = Puntos::first();
@@ -78,17 +117,20 @@ class AuthController extends Controller
                 $verificationCode = rand(100000, 999999);
             } elseif ($common['role'] === 'reciclador') {
                 $profileData = $request->validate([
-                    'name' => 'required|string',
-                    'telefono' => 'required|string',
+                    'name' => 'required|string|unique:recicladores,name',
+                    'telefono' => 'required|digits:10',
                     'ciudad' => 'required|string',
                     'asociacion_id' => 'required|exists:asociaciones,id',
-                ]);
+                    'genero' => 'required|string',
+                    'fecha_nacimiento' => 'required|date|before_or_equal:'.Carbon::now()->subYears(10)->toDateString(),
+                ],
+                ['fecha_nacimiento.before_or_equal' => 'La fecha de nacimiento debe ser antes de '.Carbon::now()->subYears(10)->toDateString()]);
 
                 $profile = Reciclador::create($profileData);
             } elseif ($common['role'] === 'asociacion') {
                 $profileData = $request->validate([
-                    'name' => 'required|string',
-                    'number_phone' => 'required|string',
+                    'name' => 'required|string|unique:asociaciones,name',
+                    'number_phone' => 'required|digits:10',
                     'city' => 'required|string',
                     'direccion' => 'required|string',
                     'descripcion' => 'required|string',
@@ -119,6 +161,7 @@ class AuthController extends Controller
                     'profile_id' => $profile->id,
                     'email_verification_code' => $verificationCode,
                     'puntos' => $puntos_usuario ?? 0, // Añadir puntos al usuario
+                    
                 ];
                 $user = AuthUser::create($userData);
                 // Enviar correo con el código
@@ -214,8 +257,12 @@ class AuthController extends Controller
             if ($common['role'] === 'reciclador') {
                 $profileData = $request->validate([
                     'name' => 'required|string',
-                    'telefono' => 'required|string',
+                    'telefono' => 'required|digits:10',
                     'asociacion_id' => 'required|exists:asociaciones,id',
+                    'fecha_nacimiento' => 'required|date|before_or_equal:'.Carbon::now()->subYears(10)->toDateString(),
+                    'genero' => 'required|string',
+                ], [
+                    'fecha_nacimiento.before_or_equal' => 'La fecha de nacimiento debe ser antes de '.Carbon::now()->subYears(10)->toDateString(),
                 ]);
                 Log::info('Creando reciclador2');
                 //anadir variables a $profileData
@@ -441,7 +488,7 @@ class AuthController extends Controller
                 'email' => 'required|email|unique:auth_users,email',
                 'password' => 'required|min:8|confirmed',
                 'name' => 'required|string',
-                'telefono' => 'required|string',
+                'telefono' => 'required|digits:10',
                 'ciudad' => 'required|string',
             ]);
 

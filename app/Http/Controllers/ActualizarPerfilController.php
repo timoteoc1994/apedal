@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use App\Models\Ciudadano;
 use Illuminate\Support\Facades\Storage;
 use App\Models\AuthUser;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
@@ -87,6 +88,10 @@ public function uploadReferentialImages(Request $request)
                     'direccion' => 'required|string',
                     'ciudad' => 'required|string',
                     'referencias_ubicacion' => 'nullable|string',
+                    'fecha_nacimiento' => 'required|date|before_or_equal:'.Carbon::now()->subYears(10)->toDateString(),
+                    'genero' => 'required|string',
+                ],[
+                    'fecha_nacimiento.before_or_equal' => 'La fecha de nacimiento debe ser antes de '.Carbon::now()->subYears(10)->toDateString(),
                 ]);
 
                 // Actualizar el email del usuario
@@ -103,6 +108,8 @@ public function uploadReferentialImages(Request $request)
                 $ciudadano->direccion = $validatedData['direccion'];
                 $ciudadano->ciudad = $validatedData['ciudad'];
                 $ciudadano->referencias_ubicacion = $validatedData['referencias_ubicacion'] ?? $ciudadano->referencias_ubicacion;
+                $ciudadano->fecha_nacimiento = $validatedData['fecha_nacimiento'];
+                $ciudadano->genero = $validatedData['genero'];
                 $ciudadano->save();
 
                 // Devolver respuesta exitosa
@@ -121,6 +128,10 @@ public function uploadReferentialImages(Request $request)
                     'email' => 'required|email|unique:auth_users,email,' . $user->id,
                     'name' => 'required|string|max:255',
                     'telefono' => 'required|string|max:15',
+                    'fecha_nacimiento' => 'required|date|before_or_equal:'.Carbon::now()->subYears(10)->toDateString(),
+                    'genero' => 'required|string',
+                ], [
+                    'fecha_nacimiento.before_or_equal' => 'La fecha de nacimiento debe ser antes de '.Carbon::now()->subYears(10)->toDateString(),
                 ]);
                 // Actualizar el email del usuario
                 $user->email = $validatedData['email'];
@@ -130,6 +141,8 @@ public function uploadReferentialImages(Request $request)
                 // Actualizar los datos del ciudadano
                 $reciclador->name = $validatedData['name'];
                 $reciclador->telefono = $validatedData['telefono'];
+                $reciclador->fecha_nacimiento = $validatedData['fecha_nacimiento'];
+                $reciclador->genero = $validatedData['genero'];
                 $reciclador->save();
                 // Devolver respuesta exitosa
                 return response()->json([
@@ -231,6 +244,10 @@ public function uploadReferentialImages(Request $request)
                     'ciudad' => 'required|string',
                     'referencias_ubicacion' => 'nullable|string',
                     'profile_image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                    'fecha_nacimiento' => 'required|date|before_or_equal:'.Carbon::now()->subYears(10)->toDateString(),
+                    'genero' => 'required|string',
+                ], [
+                    'fecha_nacimiento.before_or_equal' => 'La fecha de nacimiento debe ser antes de '.Carbon::now()->subYears(10)->toDateString(),
                 ]);
 
 
@@ -269,6 +286,8 @@ public function uploadReferentialImages(Request $request)
                 $ciudadano->direccion = $validatedData['direccion'];
                 $ciudadano->ciudad = $validatedData['ciudad'];
                 $ciudadano->referencias_ubicacion = $validatedData['referencias_ubicacion'] ?? $ciudadano->referencias_ubicacion;
+                $ciudadano->fecha_nacimiento = $validatedData['fecha_nacimiento'];
+                $ciudadano->genero = $validatedData['genero'];
 
                 // Actualizar URL de la imagen si se subió una nueva
                 if (isset($relativePath)) {
@@ -292,6 +311,10 @@ public function uploadReferentialImages(Request $request)
                     'name' => 'required|string|max:255',
                     'telefono' => 'required|string|max:15',
                     'profile_image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                    'fecha_nacimiento' => 'required|date|before_or_equal:'.Carbon::now()->subYears(10)->toDateString(),
+                    'genero' => 'required|string',
+                ], [
+                    'fecha_nacimiento.before_or_equal' => 'La fecha de nacimiento debe ser antes de '.Carbon::now()->subYears(10)->toDateString(),
                 ]);
                 $reciclador = $user->reciclador;
                 if ($request->hasFile('profile_image')) {
@@ -315,6 +338,8 @@ public function uploadReferentialImages(Request $request)
                     // Actualizar los datos del ciudadano
                     $reciclador->name = $validatedData['name'];
                     $reciclador->telefono = $validatedData['telefono'];
+                    $reciclador->fecha_nacimiento = $validatedData['fecha_nacimiento'];
+                    $reciclador->genero = $validatedData['genero'];
                     // Actualizar URL de la imagen si se subió una nueva
                     if (isset($relativePath)) {
                         $reciclador->logo_url = $relativePath;

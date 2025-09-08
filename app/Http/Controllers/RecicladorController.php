@@ -237,10 +237,11 @@ public function updateReciclador(Request $request, $id)
                     'estado',
                     'user_id',
                     'foto_ubicacion',
+                    'referencia'
                 ])
                 ->with([
                     'authUser:id,email,profile_id',
-                    'authUser.ciudadano:id,name,logo_url,telefono'
+                    'authUser.ciudadano:id,name,logo_url,telefono,nickname'
                 ])
                 ->where(function($q) use ($request) {
                     // Siempre incluir los estados "asignado", "en_camino", "pendiente"
@@ -272,8 +273,10 @@ public function updateReciclador(Request $request, $id)
                     'peso_total' => $solicitud->peso_total,
                     'estado' => $solicitud->estado,
                     'foto_ubicacion' => $solicitud->foto_ubicacion,
+                    'referencia' => $solicitud->referencia,
                     'ciudadano' => [
                         'name' => $solicitud->authUser?->ciudadano?->name,
+                        'nickname' => $solicitud->authUser?->ciudadano?->nickname,
                         'logo_url' => $solicitud->authUser?->ciudadano?->logo_url,
                         'email' => $solicitud->authUser?->email,
                         'telefono' => $solicitud->authUser?->ciudadano?->telefono,
@@ -508,7 +511,7 @@ public function updateReciclador(Request $request, $id)
                 ->where('id', $id)
                 ->first();
 
-            Log::info('Asignación encontrada: ' . ($solicitud ? 'Sí' : 'No'));
+
 
             if (!$solicitud) {
                 return response()->json([
@@ -609,6 +612,13 @@ public function updateReciclador(Request $request, $id)
 
             // Manejar el estado "en_camino" esto para es inmediata la solciitud
             if ($request->estado === 'encamino' && $solicitud->estado === 'buscando_reciclador') {
+
+                //ahora tambien vamos a buscar la id de la asociacion del reciclador
+
+                $reciclador_entonctrar = Reciclador::where('id', $authUser->profile_id)->first();
+                $asociacion_id=AuthUser::where('profile_id', $reciclador_entonctrar->asociacion_id)->where('role', 'asociacion')->first();
+
+                $solicitud->asociacion_id=$asociacion_id->id;
                 $solicitud->estado = 'en_camino';
                 $solicitud->reciclador_id = $authUser->id;
                 $solicitud->save();

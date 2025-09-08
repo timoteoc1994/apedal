@@ -103,10 +103,18 @@ class FormulariMensualController extends Controller
             'lona_precio' => 'nullable|numeric',
             'caucho_kilos' => 'nullable|numeric',
             'caucho_precio' => 'nullable|numeric',
-            'fomix_kilos' => 'nullable|numeric',
-            'fomix_precio' => 'nullable|numeric',
+            'espuma_flex_kilos' => 'nullable|numeric',
+            'espuma_flex_precio' => 'nullable|numeric',
+            'polipropileno_expandido_kilos' => 'nullable|numeric',
+            'polipropileno_expandido_precio' => 'nullable|numeric',
             'polipropileno_kilos' => 'nullable|numeric',
             'polipropileno_precio' => 'nullable|numeric',
+            'otro_material_1_kilos' => 'nullable|numeric',
+            'otro_material_1_precio' => 'nullable|numeric',
+            'otro_material_2_kilos' => 'nullable|numeric',
+            'otro_material_2_precio' => 'nullable|numeric',
+            'otro_material_3_kilos' => 'nullable|numeric',
+            'otro_material_3_precio' => 'nullable|numeric',
         ]);
         Log::info('paso el validador');
         $user = Auth::user();
@@ -226,10 +234,18 @@ class FormulariMensualController extends Controller
         'lona_precio' => 'sometimes|nullable|numeric',
         'caucho_kilos' => 'sometimes|nullable|numeric',
         'caucho_precio' => 'sometimes|nullable|numeric',
-        'fomix_kilos' => 'sometimes|nullable|numeric',
-        'fomix_precio' => 'sometimes|nullable|numeric',
+        'espuma_flex_kilos' => 'sometimes|nullable|numeric',
+        'espuma_flex_precio' => 'sometimes|nullable|numeric',
+        'polipropileno_expandido_kilos' => 'sometimes|nullable|numeric',
+        'polipropileno_expandido_precio' => 'sometimes|nullable|numeric',
         'polipropileno_kilos' => 'sometimes|nullable|numeric',
         'polipropileno_precio' => 'sometimes|nullable|numeric',
+        'otro_material_1_kilos' => 'sometimes|nullable|numeric',
+        'otro_material_1_precio' => 'sometimes|nullable|numeric',
+        'otro_material_2_kilos' => 'sometimes|nullable|numeric',
+        'otro_material_2_precio' => 'sometimes|nullable|numeric',
+        'otro_material_3_kilos' => 'sometimes|nullable|numeric',
+        'otro_material_3_precio' => 'sometimes|nullable|numeric',
     ]);
 
       // 1. Obtener los archivos actuales

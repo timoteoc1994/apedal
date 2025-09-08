@@ -63,6 +63,16 @@ class FormulariMensual extends Model
         'polipropileno_kilos',
         'polipropileno_precio',
         'archivos_adjuntos',
+        'espuma_flex_kilos',
+        'espuma_flex_precio',
+        'polipropileno_expandido_kilos',
+        'polipropileno_expandido_precio',
+        'otro_material_1_kilos',
+        'otro_material_1_precio',
+        'otro_material_2_kilos',
+        'otro_material_2_precio',
+        'otro_material_3_kilos',
+        'otro_material_3_precio'
     ];
 
     public function asociacion()

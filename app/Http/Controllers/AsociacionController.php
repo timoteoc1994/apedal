@@ -76,20 +76,23 @@ class AsociacionController extends Controller
         Log::warning($request->all());
         try {
             $data = $request->validate([
-                'name' => 'sometimes|string|max:255',
-                'phone' => 'sometimes|string|max:20',
-                'estado' => 'required|string',
-                'password' => [
-                    'string',
-                    'min:8',
-                    'confirmed',
-                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'
-                ],
-                'password_confirmation' => 'sometimes|string|min:8',
-                'email' => 'sometimes|string|email|max:255',
-            ], [
-                'password.regex' => 'La contraseña debe tener al menos una mayúscula, una minúscula, un número y un carácter especial.'
-            ]);
+    'name' => 'sometimes|string|max:255|unique:recicladores,name,' . $id,
+    'phone' => 'sometimes|string|max:20',
+    'estado' => 'required|string',
+    'genero' => 'sometimes|string',
+    'fecha_nacimiento' => 'sometimes|date|before_or_equal:' . now()->subYears(10)->toDateString(),
+    'password' => [
+        'string',
+        'min:8',
+        'confirmed',
+        'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/'
+    ],
+    'password_confirmation' => 'sometimes|string|min:8',
+    'email' => 'sometimes|string|email|max:255',
+], [
+    'password.regex' => 'La contraseña debe tener al menos una mayúscula, una minúscula, un número y un carácter especial.',
+    'name.unique' => 'Este nombre ya está en uso por otro reciclador.'
+, 'fecha_nacimiento.before_or_equal' => 'La fecha de nacimiento debe ser anterior a ' . now()->subYears(10)->toDateString() . '.',]);
 
             $reciclador = Reciclador::find($id);
             if (!$reciclador) {
@@ -114,6 +117,12 @@ class AsociacionController extends Controller
             }
             if ($request->filled('estado')) {
                 $reciclador->estado = $data['estado'];
+            }
+            if ($request->filled('genero')) {
+                $reciclador->genero = $data['genero'];
+            }
+            if ($request->filled('fecha_nacimiento')) {
+                $reciclador->fecha_nacimiento = $data['fecha_nacimiento'];
             }
             $reciclador->is_new = 'false';
             $reciclador->update($data);
