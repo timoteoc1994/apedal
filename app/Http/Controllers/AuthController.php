@@ -125,6 +125,7 @@ class AuthController extends Controller
                     'fecha_nacimiento' => 'required|date|before_or_equal:'.Carbon::now()->subYears(10)->toDateString(),
                 ],
                 ['fecha_nacimiento.before_or_equal' => 'La fecha de nacimiento debe ser antes de '.Carbon::now()->subYears(10)->toDateString()]);
+                $profileData['fcm_token'] = null;
 
                 $profile = Reciclador::create($profileData);
             } elseif ($common['role'] === 'asociacion') {
@@ -275,6 +276,7 @@ class AuthController extends Controller
                 $profileData['estado'] = 'Inactivo';
                 $profileData['status'] = 'inactivo';
                 $profileData['is_new'] = 'true';
+                $profileData['fcm_token'] = null;
                 Log::info('Creando reciclador4');
 
                 $profile = Reciclador::create($profileData);
