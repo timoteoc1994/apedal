@@ -125,7 +125,7 @@ class AuthController extends Controller
                     'fecha_nacimiento' => 'required|date|before_or_equal:'.Carbon::now()->subYears(10)->toDateString(),
                 ],
                 ['fecha_nacimiento.before_or_equal' => 'La fecha de nacimiento debe ser antes de '.Carbon::now()->subYears(10)->toDateString()]);
-                $profileData['fcm_token'] = null;
+                
 
                 $profile = Reciclador::create($profileData);
             } elseif ($common['role'] === 'asociacion') {
@@ -178,14 +178,15 @@ class AuthController extends Controller
                     'profile_id' => $profile->id,
                     'puntos' => $puntos_usuario ?? 0,
                 ];
+                $userData['fcm_token'] = null; // Inicializar fcm_token como null
                 $user = AuthUser::create($userData);
             }
 
 
             // Añadir el token FCM si está presente
-            if ($request->has('fcm_token') && $request->fcm_token) {
+            /* if ($request->has('fcm_token') && $request->fcm_token) {
                 $userData['fcm_token'] = $request->fcm_token;
-            }
+            } */
 
 
 
