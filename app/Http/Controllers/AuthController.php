@@ -294,9 +294,10 @@ class AuthController extends Controller
             ];
 
             // Añadir el token FCM si está presente
-            if ($request->has('fcm_token') && $request->fcm_token) {
+            /* if ($request->has('fcm_token') && $request->fcm_token) {
                 $userData['fcm_token'] = $request->fcm_token;
-            }
+            } */
+            $userData['fcm_token'] = null; // Inicializar fcm_token como null
 
             $user = AuthUser::create($userData);
 
