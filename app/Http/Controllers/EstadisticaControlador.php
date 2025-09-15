@@ -7,6 +7,7 @@ use App\Models\AuthUser;
 use App\Models\City;
 use App\Models\FormulariMensual;
 use App\Models\SolicitudRecoleccion;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class EstadisticaControlador extends Controller
@@ -48,9 +49,9 @@ class EstadisticaControlador extends Controller
                 $authUserId = $asoc->authuser->id;
 
                 // Base queries
-                $queryInmediatas = SolicitudRecoleccion::where('asociacion_id', $authUserId)
+                $queryInmediatas = SolicitudRecoleccion::with('materiales')->where('asociacion_id', $authUserId)
                     ->where('es_inmediata', 1)->where('estado', 'completado');
-                $queryAgendadas = SolicitudRecoleccion::where('asociacion_id', $authUserId)
+                $queryAgendadas = SolicitudRecoleccion::with('materiales')->where('asociacion_id', $authUserId)
                     ->where('es_inmediata', 0)->where('estado', 'completado');
 
                 // Filtrar por meses (meses vienen como "02","03" etc.)
@@ -105,6 +106,9 @@ class EstadisticaControlador extends Controller
                     });
                 }
 
+               
+
+
                 // Contar resultados (más eficiente que get() + count())
                 $countInmediatas = $queryInmediatas->count();
                 $countAgendadas = $queryAgendadas->count();
@@ -113,12 +117,60 @@ class EstadisticaControlador extends Controller
                 $sumAgendadas  = (float) $queryAgendadas->sum('peso_total_revisado');
                 $suma_peso_kg  = $sumInmediatas + $sumAgendadas;
 
-                $datos[] = [
-                    'asociacion' => $asoc->name,
-                    'solicitudes_inmediatas' => $countInmediatas,
-                    'solicitudes_agendadas' => $countAgendadas,
-                    'suma_peso_kg' => $suma_peso_kg
-                ];
+                    // Tipos de materiales a consultar
+                    $tiposMateriales = [
+                        'eletronicos',
+                        'electrodomesticos',
+                        'metales',
+                        'latas',
+                        'pilas',
+                        'vidrio',
+                        'plasticosRigidos',
+                        'plasticosSoplado',
+                        'plasticosSuaves',
+                        'botellasPET',
+                        'tetrapak',
+                        'papel',
+                    ];
+
+                    // Obtener IDs de solicitudes agendadas e inmediatas
+                    $idsSolicitudes = $queryInmediatas->pluck('id')->merge($queryAgendadas->pluck('id'))->all();
+
+                    // Inicializar array de sumas por tipo
+                    $materialesSuma = array_fill_keys($tiposMateriales, 0);
+
+                    if (count($idsSolicitudes)) {
+                        $materiales = \App\Models\Material::whereIn('solicitud_id', $idsSolicitudes)
+                            ->whereIn('tipo', $tiposMateriales)
+                            ->select('tipo', \DB::raw('SUM(peso_revisado) as suma'))
+                            ->groupBy('tipo')
+                            ->get();
+
+                        foreach ($materiales as $mat) {
+                            $materialesSuma[$mat->tipo] = (float) $mat->suma;
+                        }
+                    }
+
+                    $datos[] = [
+                        'asociacion' => $asoc->name,
+                        'solicitudes_inmediatas' => $countInmediatas,
+                        'solicitudes_agendadas' => $countAgendadas,
+                        'suma_peso_kg' => $suma_peso_kg,
+                        'eletronicos' => $materialesSuma['eletronicos'] ?? 0,
+                        'electrodomesticos' => $materialesSuma['electrodomesticos'] ?? 0,
+                        'metales' => $materialesSuma['metales'] ?? 0,
+                        'latas' => $materialesSuma['latas'] ?? 0,
+                        'pilas' => $materialesSuma['pilas'] ?? 0,
+                        'vidrio' => $materialesSuma['vidrio'] ?? 0,
+                        'plasticosRigidos' => $materialesSuma['plasticosRigidos'] ?? 0,
+                        'plasticosSoplado' => $materialesSuma['plasticosSoplado'] ?? 0,
+                        'plasticosSuaves' => $materialesSuma['plasticosSuaves'] ?? 0,
+                        'botellasPET' => $materialesSuma['botellasPET'] ?? 0,
+                        'tetrapak' => $materialesSuma['tetrapak'] ?? 0,
+                        'papel' => $materialesSuma['papel'] ?? 0,
+                    ];
+
+               
             }
             //dd($datos);
         }
