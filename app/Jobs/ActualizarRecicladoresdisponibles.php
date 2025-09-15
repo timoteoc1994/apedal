@@ -70,7 +70,7 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
 
     // Calcular radio progresivo: empezar con 3km y aumentar gradualmente
     $radioActual = $this->radioKm + ($this->intentos * 1.5); // 3km, 4.5km, 6km, 7.5km...
-    $radioActual = min($radioActual, 15); // Máximo 15km
+    $radioActual = min($radioActual, 5); // Máximo 5km
 
     Log::info('Buscando recicladores con radio actual', [
         'solicitud_id' => $this->solicitudId,
@@ -85,7 +85,7 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
         $solicitud->latitud,
         $solicitud->longitud,
         $radioActual,
-        10,
+        500,
         $idsActuales
     );
 

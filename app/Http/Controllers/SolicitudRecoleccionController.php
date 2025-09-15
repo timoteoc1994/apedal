@@ -19,7 +19,7 @@ use App\Models\Asociacion;
 use App\Models\Zona;
 use Illuminate\Support\Facades\Log;
 use App\Events\EliminacionSolicitud;
-
+use App\Jobs\CancelarSolicitudInmediata;
 //los demas
 use Inertia\Inertia;  
 use Illuminate\Support\Facades\DB;
@@ -578,6 +578,9 @@ class SolicitudRecoleccionController extends Controller
         foreach ($ids_disponibles as $recicladorId) {
             SolicitudAgendada::dispatch($solicitud, $recicladorId, 'agendada');
         }
+
+         // 🆕 NUEVO: Programar cancelación automática después de 60 minutos
+            CancelarSolicitudInmediata::dispatch($solicitud->id)->delay(now()->addMinutes(60));
 
         //enviar una notificacion a la asociacion que se creo una solicitud en su zona por firebase
 

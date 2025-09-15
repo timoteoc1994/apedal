@@ -52,7 +52,7 @@ class CancelarSolicitudInmediata implements ShouldQueue
 
                 $solicitud->update([
                     'estado' => 'cancelado',
-                    'comentarios' => 'Tiempo de espera agotado (10 segundos)'
+                    'comentarios' => 'Tiempo de espera agotado (Sistema automático de cancelación)'
                 ]);
 
                 Log::info('Solicitud cancelada automáticamente por timeout', [
