@@ -50,6 +50,8 @@
                             <li>Número de teléfono</li>
                             <li>Dirección física (para servicios de recolección)</li>
                             <li>Tipo de usuario (ciudadano o reciclador)</li>
+                            <li>Género</li>
+                            <li>Fecha de nacimiento</li>
                         </ul>
 
                         <h3 class="text-xl font-medium text-gray-700 mb-3">2.2 Información de Ubicación</h3>
@@ -147,13 +149,43 @@
                         </p>
                     </section>
 
+                   
+
                     <section class="mb-8">
-                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">10. Contacto</h2>
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">10. Permisos en la Aplicación</h2>
+                        <p><strong>Ubicación:</strong></p>
+                                                <p class="mb-4">
+                                                    <strong>Ciudadanía:</strong> Utilizamos la ubicación para facilitar el proceso de solicitud de recolección, registrar su cuenta y definir su lugar preferido para el servicio. Esto nos permite asignar recicladores de manera eficiente y garantizar una experiencia personalizada.
+                                                    <br />
+                                                     <strong>Recicladores:</strong> La ubicación es esencial para recibir notificaciones de solicitudes cercanas, optimizar rutas de recolección y mejorar la logística del servicio, contribuyendo a una gestión más eficiente de los recursos.
+                                                     <br>
+                                                     <strong>Asociaciones:</strong> Utilizamos la ubicación para identificar el lugar de la asociación y permitir que la ciudadanía conozca los puntos oficiales de entrega de reciclaje, promoviendo la transparencia y el acceso a la red de recicladores.
+                                                </p>
+                                               
+                        <p><strong>Cámara:</strong></p>
+                                                <p class="mb-4">
+                                                    Solicitamos acceso a la cámara exclusivamente capturar imágenes relacionadas con las recolecciones y permitir la actualización de su perfil. El uso de la cámara está restringido a funciones operativas dentro de la aplicación.
+                                                </p>
+                        <p><strong>Galería:</strong></p>
+                                                <p class="mb-4">
+                                                    El acceso a la galería se utiliza únicamente para seleccionar y enviar imágenes vinculadas a las recolecciones o para actualizar la foto de perfil. No accedemos ni almacenamos imágenes fuera de estos fines específicos.
+                                                </p>
+                        <p><strong>Notificaciones:</strong></p>
+                                                <p class="mb-4">
+                                                    Las notificaciones permiten mantenerle informado sobre el estado de sus solicitudes y novedades importantes del servicio.
+                                                </p>
+                                                <p>El uso de estos permisos está estrictamente limitado a la prestación de nuestros servicios. No compartimos ni divulgamos su información personal a terceros sin su consentimiento expreso.</p>
+
+                        
+                    </section>
+
+                     <section class="mb-8">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">11. Contacto</h2>
                         <p class="mb-4">
                             Si tiene preguntas sobre esta Política de Privacidad o desea ejercer 
                             sus derechos, puede contactarnos:
                         </p>
-                        <div class="bg-gray-50 p-4 rounded-lg">
+                       <div class="bg-gray-50 p-4 rounded-lg">
                             <p><strong>Email:</strong> coordinacion@renarec.org</p>
                             <p><strong>Dirección:</strong> Quito Avenida Colón E5-56 y Juan León Mera, Edificio Ave María, bloque B, piso 6.</p>
                         </div>
