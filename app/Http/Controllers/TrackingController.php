@@ -34,7 +34,7 @@ class TrackingController extends Controller
         ]);
     }
 
-    public function show($id = 3)
+    public function show($id)
     {
         return Inertia::render('Tracking/Show', [
             'recyclerId' => $id

@@ -9,6 +9,7 @@ use App\Models\FormulariMensual;
 use App\Models\SolicitudRecoleccion;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class EstadisticaControlador extends Controller
 {
@@ -208,5 +209,76 @@ class EstadisticaControlador extends Controller
         });
 
         return response()->json($asociaciones);
+    }
+    public function descargar_pdf_estadisticas(Request $request)
+    {
+        // Esperamos recibir JSON con estructura: { filtros: {...}, fila: { asociacion, papel, tetrapak, ... } }
+        $fila = $request->input('fila', null);
+
+        // Si no viene fila, podemos usar un fallback (por ejemplo: datos desde request->all() o valores por defecto)
+        if (!is_array($fila)) {
+            $fila = [
+                'asociacion' => $request->input('asociacion', 'Sin asociación'),
+                'papel' => 0,
+                'tetrapak' => 0,
+                'botellasPET' => 0,
+                'plasticosSuaves' => 0,
+                'plasticosSoplado' => 0,
+                'plasticosRigidos' => 0,
+                'vidrio' => 0,
+                'pilas' => 0,
+                'latas' => 0,
+                'metales' => 0,
+                'electrodomesticos' => 0,
+                'eletronicos' => 0,
+                'suma_peso_kg' => 0,
+                'solicitudes_inmediatas' => 0,
+                'solicitudes_agendadas' => 0,
+            ];
+        }
+
+        // Preparar datos que la vista Blade espera. Puedes añadir más claves según tu plantilla.
+        $data = [
+            'nombre' => $fila['asociacion'] ?? 'Sin asociación',
+            'papel' => $fila['papel'] ?? 0,
+            'tetrapak' => $fila['tetrapak'] ?? 0,
+            'botellasPET' => $fila['botellasPET'] ?? 0,
+            'plasticosSuaves' => $fila['plasticosSuaves'] ?? 0,
+            'plasticosSoplado' => $fila['plasticosSoplado'] ?? 0,
+            'plasticosRigidos' => $fila['plasticosRigidos'] ?? 0,
+            'vidrio' => $fila['vidrio'] ?? 0,
+            'pilas' => $fila['pilas'] ?? 0,
+            'latas' => $fila['latas'] ?? 0,
+            'metales' => $fila['metales'] ?? 0,
+            'electrodomesticos' => $fila['electrodomesticos'] ?? 0,
+            'eletronicos' => $fila['eletronicos'] ?? 0,
+            'suma_peso_kg' => $fila['suma_peso_kg'] ?? 0,
+            'solicitudes_inmediatas' => $fila['solicitudes_inmediatas'] ?? 0,
+            'solicitudes_agendadas' => $fila['solicitudes_agendadas'] ?? 0,
+            // Pasar filtros completos por si la vista los necesita
+            'filtros' => $request->input('filtros', []),
+        ];
+
+        // Generar PDF y habilitar carga remota si es necesario
+        $pdf = Pdf::loadView('pdf.documentomarketing', $data);
+        try {
+            $pdf->getDomPDF()->set_option('isRemoteEnabled', true);
+        } catch (\Throwable $e) {
+            // Si la función no está disponible, continuar sin bloquear la generación
+        }
+
+        // Crear nombre del archivo con fecha y nombre de asociación
+        $nombreAsociacion = $data['nombre'] ?? 'reporte';
+        $nombreAsociacion = preg_replace('/[^a-zA-Z0-9]/', '_', $nombreAsociacion);
+        $fecha = date('Y-m-d');
+        $nombreArchivo = "Reporte_{$nombreAsociacion}_{$fecha}.pdf";
+
+        // Devolver el PDF con headers de descarga más específicos
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "attachment; filename=\"{$nombreArchivo}\"",
+            'Cache-Control' => 'private, max-age=0, must-revalidate',
+            'Pragma' => 'public',
+        ]);
     }
 }

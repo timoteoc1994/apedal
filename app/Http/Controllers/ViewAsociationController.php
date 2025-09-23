@@ -11,6 +11,7 @@ use App\Models\Reciclador;
 use App\Models\SolicitudRecoleccion;
 use App\Models\Zona;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Log;
 
 class ViewAsociationController extends Controller
 {
@@ -139,7 +140,7 @@ class ViewAsociationController extends Controller
 
     public function recicladores(Request $request)
     {
-
+   
         // como $request->id que viene la id del authuser necesito la id de la asociacion
         $nombreAsociacion = AuthUser::where('role', 'asociacion')
             ->where('id', $request->id)
@@ -172,18 +173,46 @@ class ViewAsociationController extends Controller
             // Obtener el dato de Redis usando el id del authUser relacionado
             $authUserId = $reciclador->authUser->id ?? null;
             $verificarsiesta = false;
+            $statusRedis = 'inactivo'; // Status por defecto
+            
             if ($authUserId) {
-                $recicladorData = Redis::hget("recycler:id", $authUserId);
+                // Usar la clave correcta de Redis
+                $recicladorData = Redis::get("recycler:location:$authUserId");
+                
+                // Debug temporal - eliminar después
+                Log::info("Reciclador ID: {$reciclador->id}, AuthUser ID: {$authUserId}");
+                Log::info("Redis Data: " . ($recicladorData ?: 'No data'));
+                
                 if ($recicladorData) {
                     $recicladorRedis = json_decode($recicladorData, true);
+                    
+                    Log::info("Decoded Redis: ", $recicladorRedis);
+                    
+                    // Asignar el status de Redis al reciclador específico
+                    if (isset($recicladorRedis['status'])) {
+                        $statusRedis = $recicladorRedis['status'];
+                        Log::info("Status from Redis: " . $statusRedis);
+                    }
+                    
+                    // Verificar si está disponible/en_ruta Y tiene posición válida
                     if (
                         isset($recicladorRedis['status']) &&
-                        ($recicladorRedis['status'] === 'disponible' || $recicladorRedis['status'] === 'en_ruta')
+                        ($recicladorRedis['status'] === 'disponible' || $recicladorRedis['status'] === 'en_ruta') &&
+                        isset($recicladorRedis['latitude']) && 
+                        isset($recicladorRedis['longitude']) &&
+                        !empty($recicladorRedis['latitude']) && 
+                        !empty($recicladorRedis['longitude']) &&
+                        $recicladorRedis['latitude'] != 0 &&
+                        $recicladorRedis['longitude'] != 0
                     ) {
                         $verificarsiesta = true;
                     }
                 }
             }
+            
+            // Reemplazar el status de la base de datos con el de Redis para este reciclador específico
+            $reciclador->status = $statusRedis;
+            Log::info("Final status for reciclador {$reciclador->id}: " . $statusRedis);
             // Agrega la variable al objeto reciclador
             $reciclador->verificarsiesta = $verificarsiesta;
         }

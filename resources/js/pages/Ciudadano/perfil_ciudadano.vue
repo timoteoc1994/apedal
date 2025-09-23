@@ -132,6 +132,8 @@
                                 <th class="px-4 py-3 text-left">Horario</th>
                                 <th class="px-4 py-3 text-left">Estado</th>
                                 <th class="px-4 py-3 text-left">Peso total</th>
+                                <th class="px-4 py-3 text-left">Calificación</th>
+                                <th class="px-4 py-3 text-left">Puntos Recibidos</th>
                                 <th class="px-4 py-3 text-left">Acción</th>
                             </tr>
                         </thead>
@@ -169,6 +171,15 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-2">{{ sol.peso_total ?? 'N/A' }} kg</td>
+                                <td class="px-4 py-2">
+                                    <span class="text-yellow-500">
+                                        <span v-for="n in 5" :key="n">
+                                            <span v-if="n <= (sol.calificacion_reciclador ?? 0)">&#9733;</span>
+                                            <span v-else class="text-gray-300">&#9733;</span>
+                                        </span>
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2 font-bold text-green-600">+{{ sol.calificacion_ciudadano ?? 0 }}</td>
                                 <td class="px-4 py-2">
                                     <button class="text-indigo-600 hover:scale-105 hover:text-indigo-900" title="Ver detalle">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

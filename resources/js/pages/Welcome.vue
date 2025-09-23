@@ -85,7 +85,7 @@ onMounted(() => {
                             <div class="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
                                 <!-- Google Play (activo) -->
                                 <a
-                                    href="#" aria-label="Descargar en Google Play" target="_blank"
+                                    href="https://play.google.com/store/apps/details?id=org.renarec.adri" aria-label="Descargar en Google Play" target="_blank"
                                     class="download-badge group flex items-center justify-center rounded-2xl bg-gray-900/90 px-6 py-3 shadow-xl backdrop-blur-sm transition-transform duration-300 transform hover:scale-105 hover:shadow-2xl mx-auto"
                                 >
                                     <img src="/storage/plataforma/google-play.png" alt="Google Play" class="w-40 sm:w-48 md:w-56 lg:w-64 object-contain transition-transform duration-300 group-hover:scale-105 mx-auto block"/>

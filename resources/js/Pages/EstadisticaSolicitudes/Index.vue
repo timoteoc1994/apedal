@@ -515,7 +515,12 @@
                                 <td class="px-6 py-4">{{ c.metales }} Kg</td>
                                 <td class="px-6 py-4">{{ c.electrodomesticos }} Kg</td>
                                 <td class="px-6 py-4">{{ c.eletronicos }} Kg</td>
-
+                                <td class="px-6 py-4">
+                                     <PrimaryButton @click="generarPdf(c)" :disabled="isDownloading">
+                <template v-if="isDownloading"> <i class="fa-solid fa-spinner fa-spin"></i> Procesando... </template>
+                <template v-else> <i class="fa-solid fa-file-pdf"></i> Reporte </template>
+            </PrimaryButton>
+                                </td>
                 
                             </tr>
                         </tbody>
@@ -530,6 +535,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import axios from 'axios';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
 
 const props = defineProps({
     asociacion: Array,
@@ -539,6 +545,12 @@ const props = defineProps({
 });
 
 import { computed, ref } from 'vue';
+
+// Configurar token CSRF para axios
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+if (csrfToken) {
+    axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken;
+}
 
 // Estado del formulario (múltiples)
 const ciudadSeleccionada = ref([]);
@@ -590,6 +602,7 @@ const headers = [
     { key: 'metales', label: 'Metales (kg)' },
     { key: 'electrodomesticos', label: 'Electrodomésticos (kg)' },
     { key: 'eletronicos', label: 'Electrónicos (kg)' },
+    { key: 'pdf', label: 'PDF' },
     
 ];
 
@@ -717,39 +730,96 @@ function buscarMatriz() {
     );
 }
 
-const downloadExcel = async () => {
-    if (
-        !ciudadSeleccionada.value ||
-        ciudadSeleccionada.value.length === 0 ||
-        !asociacionSeleccionada.value ||
-        asociacionSeleccionada.value.length === 0
-    ) {
-        alert('Seleccione ciudad(es) y asociación(es) antes de descargar');
-        return;
-    }
+const generarPdf = async (rowData = null) => {
+    // Construir objeto con los campos específicos que queremos enviar
+    const fila = rowData
+        ? {
+              asociacion: rowData.asociacion,
+              papel: rowData.papel || 0,
+              tetrapak: rowData.tetrapak || 0,
+              botellasPET: rowData.botellasPET || 0,
+              plasticosSuaves: rowData.plasticosSuaves || 0,
+              plasticosSoplado: rowData.plasticosSoplado || 0,
+              plasticosRigidos: rowData.plasticosRigidos || 0,
+              vidrio: rowData.vidrio || 0,
+              pilas: rowData.pilas || 0,
+              latas: rowData.latas || 0,
+              metales: rowData.metales || 0,
+              electrodomesticos: rowData.electrodomesticos || 0,
+              eletronicos: rowData.eletronicos || 0,
+              suma_peso_kg: rowData.suma_peso_kg || 0,
+              solicitudes_inmediatas: rowData.solicitudes_inmediatas || 0,
+              solicitudes_agendadas: rowData.solicitudes_agendadas || 0,
+          }
+        : props.datos;
 
-    isDownloading.value = true;
-    try {
-        const params = {
+    const payload = {
+        filtros: {
             ciudad: ciudadSeleccionada.value,
             asociacion: asociacionSeleccionada.value,
             mes: mesSeleccionado.value,
             anio: anioSeleccionado.value,
-        };
-        const downloadUrl = route('descargar_excel') + '?' + serializeParams(params);
-        const response = await axios.get(downloadUrl, { responseType: 'blob' });
-        const url = window.URL.createObjectURL(new Blob([response.data]));
+        },
+        fila,
+    };
+
+    try {
+        isDownloading.value = true;
+        const response = await axios.post(route('descargar_pdf_estadisticas'), payload, {
+            responseType: 'blob',
+        });
+
+        // Crear nombre del archivo con fecha y nombre de asociación
+        const fechaActual = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
+        const nombreAsociacion = fila.asociacion ? fila.asociacion.replace(/[^a-zA-Z0-9]/g, '_') : 'reporte';
+        const nombreArchivo = `Reporte_${nombreAsociacion}_${fechaActual}.pdf`;
+
+        // Crear blob y enlace de descarga
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        
+        // Crear elemento <a> temporal para forzar la descarga
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', 'estadistica.xlsx');
+        link.download = nombreArchivo;
+        link.style.display = 'none';
+        
+        // Agregar al DOM, hacer clic y remover
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        // Limpiar el objeto URL después de un tiempo
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 10000);
+        
+        // Opcional: También abrir en nueva pestaña para visualización
+        const urlVisualizacion = URL.createObjectURL(blob);
+        window.open(urlVisualizacion, '_blank');
+        setTimeout(() => URL.revokeObjectURL(urlVisualizacion), 10000);
+        
     } catch (e) {
-        console.error(e);
-        alert('Error al descargar');
+        console.error('Error generando PDF:', e);
+        
+        // Mejor manejo de errores
+        let mensaje = 'Ocurrió un error al generar el PDF.';
+        if (e.response) {
+            // Error del servidor
+            if (e.response.status === 419) {
+                mensaje = 'Error de token CSRF. Recarga la página e intenta de nuevo.';
+            } else if (e.response.status === 500) {
+                mensaje = 'Error interno del servidor. Revisa los logs de Laravel.';
+            } else {
+                mensaje = `Error ${e.response.status}: ${e.response.statusText}`;
+            }
+        } else if (e.request) {
+            mensaje = 'No se pudo conectar con el servidor.';
+        }
+        
+        alert(mensaje);
     } finally {
         isDownloading.value = false;
     }
-};
+ };
 </script>

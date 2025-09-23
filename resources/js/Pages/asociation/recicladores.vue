@@ -197,7 +197,7 @@ const displayedPages = computed(() => {
 function goToPage(page: number) {
     if (page < 1 || page > totalPages.value) return;
     router.get(
-        route('asociation.index.recicladores', { id: props.nombreAsociacion.asociacion.id }),
+        route('asociation.index.recicladores', { id: props.nombreAsociacion.id }),
         { search: search.value, sort: sort.value, direction: direction.value, page },
         { preserveState: true },
     );

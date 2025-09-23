@@ -217,4 +217,4 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
-Route::get('/tracking/{id}', [TrackingController::class, 'getLocationData']);
+//Route::get('/tracking/{id}', [TrackingController::class, 'getLocationData']);

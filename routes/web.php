@@ -139,6 +139,8 @@ Route::middleware(['auth', 'role:Administrador,Moderador'])->group(function () {
      //Estadisticas solicitudes
      Route::get('/estadisticasolicitudes', [EstadisticaControlador::class, 'index'])->name('estadisticasolicitudes.index');
 
+     Route::post('descargar_pdf_estadisticas', [EstadisticaControlador::class, 'descargar_pdf_estadisticas'])->name('descargar_pdf_estadisticas');
+
     // Obtener asociaciones filtradas por ciudad(s)
     Route::get('/estadistica/asociaciones', [EstadisticaControlador::class, 'asociacionesPorCiudad'])->name('estadistica.asociaciones');
 
