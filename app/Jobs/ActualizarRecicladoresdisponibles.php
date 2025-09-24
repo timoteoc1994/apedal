@@ -231,7 +231,7 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
     Log::info("¿Existe la clave GEO 'recycler:locations:active'?", [
         'existe' => $geoExists ? 'SÍ' : 'NO'
     ]);
-    
+
         Log::info('Buscando nuevos recicladores cercanos con Redis y filtro de ciudad', [
             'latitud' => $latitud,
             'longitud' => $longitud,
@@ -263,7 +263,14 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
 
         // Procesar resultados de Redis
         $recicladoresFiltrados = collect();
-        foreach ($recicladorIds as $item) {
+        foreach ($recicladorIds as $index => $item) {
+            Log::info("🔍 PROCESANDO ITEM #{$index}", [
+                'item_completo' => $item,
+                'item_type' => gettype($item),
+                'item_is_array' => is_array($item),
+                'item_count' => is_array($item) ? count($item) : 'no_array'
+            ]);
+
             // Corregir la forma en que accedemos a los datos según la estructura real
             if (is_array($item) && isset($item[0]) && isset($item[1])) {
                 $userId = $item[0];
@@ -272,28 +279,48 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
                 $userId = $item;
                 $distanciaMetros = 0;
             } else {
-                Log::warning("Formato de respuesta de Redis desconocido", ['item' => $item]);
+                Log::warning("⚠️ Formato de respuesta de Redis desconocido", ['item' => $item]);
                 continue;
             }
 
+            Log::info("👤 PROCESANDO RECICLADOR", [
+                'user_id' => $userId,
+                'distancia_metros' => $distanciaMetros,
+                'ya_excluido' => in_array($userId, $excludeIds)
+            ]);
+
             // Ignorar IDs que ya están en la lista
             if (in_array($userId, $excludeIds)) {
+                Log::info("⏭️ Reciclador ya incluido, saltando", ['user_id' => $userId]);
                 continue;
             }
 
             // Verificar si el reciclador está disponible
             $status = Redis::hget("recycler:status", $userId);
+            Log::info("🔍 VERIFICANDO ESTADO", [
+                'user_id' => $userId,
+                'status_redis' => $status,
+                'status_type' => gettype($status),
+                'status_es_disponible' => $status === 'disponible',
+                'status_es_string' => is_string($status),
+                'status_length' => is_string($status) ? strlen($status) : 'no_string'
+            ]);
 
             // Solo incluir si está disponible
             if ($status === 'disponible') {
+                Log::info("✅ RECICLADOR DISPONIBLE", ['user_id' => $userId]);
                 // Obtener datos completos del reciclador desde Redis
                 $locationData = Redis::get("recycler:location:{$userId}");
+                Log::info("📍 DATOS DE UBICACIÓN", [
+                    'user_id' => $userId,
+                    'location_data_exists' => !empty($locationData),
+                    'location_data_raw' => $locationData ? 'existe' : 'vacio'
+                ]);
 
                 if ($locationData) {
                     $locationData = json_decode($locationData, true);
 
-                    // 🆕 AGREGAR LOG PARA VER QUÉ CONTIENE EXACTAMENTE LOCATIONDATA
-                    Log::debug("Datos recuperados desde Redis para reciclador", [
+                    Log::info("📍 LOCATION DATA DECODIFICADO", [
                         'user_id' => $userId,
                         'location_data_completo' => $locationData,
                         'keys_disponibles' => array_keys($locationData ?? []),
@@ -304,20 +331,20 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
                     // 🆕 FILTRO POR CIUDAD: Verificar que la ciudad coincida
                     $ciudadReciclador = $locationData['ciudad'] ?? null;
                     
-                    // 🆕 Agregar más logs de comparación
-                    Log::debug("Comparación de ciudades", [
+                    Log::info("🏙️ COMPARACIÓN DE CIUDADES", [
                         'user_id' => $userId,
                         'ciudad_reciclador_original' => $ciudadReciclador,
                         'ciudad_requerida_original' => $this->ciudad,
                         'ciudad_reciclador_trimmed' => trim($ciudadReciclador ?? ''),
                         'ciudad_requerida_trimmed' => trim($this->ciudad ?? ''),
-                        'comparacion_strcasecmp' => $ciudadReciclador ? strcasecmp(trim($ciudadReciclador), trim($this->ciudad)) : 'null'
+                        'comparacion_strcasecmp_result' => $ciudadReciclador ? strcasecmp(trim($ciudadReciclador), trim($this->ciudad)) : 'null',
+                        'ciudades_son_iguales' => $ciudadReciclador && strcasecmp(trim($ciudadReciclador), trim($this->ciudad)) === 0
                     ]);
                     
                     if (!$ciudadReciclador || 
                         strcasecmp(trim($ciudadReciclador), trim($this->ciudad)) !== 0) {
                         
-                        Log::debug("Reciclador filtrado por ciudad diferente", [
+                        Log::info("❌ RECICLADOR FILTRADO POR CIUDAD", [
                             'user_id' => $userId,
                             'ciudad_reciclador' => $ciudadReciclador,
                             'ciudad_requerida' => $this->ciudad,
@@ -326,8 +353,18 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
                         continue; // Saltar este reciclador
                     }
 
+                    Log::info("✅ RECICLADOR PASA FILTRO DE CIUDAD", [
+                        'user_id' => $userId,
+                        'ciudad_coincide' => $ciudadReciclador
+                    ]);
+
                     // 🔧 FIX: Obtener datos del reciclador desde Redis
                     $recicladorData = Redis::get("recycler:profile:{$userId}");
+                    Log::info("👤 PERFIL DEL RECICLADOR", [
+                        'user_id' => $userId,
+                        'profile_data_exists' => !empty($recicladorData),
+                        'profile_data_raw' => $recicladorData ? 'existe' : 'no_existe'
+                    ]);
                     
                     if ($recicladorData) {
                         $recicladorData = json_decode($recicladorData, true);
@@ -343,14 +380,15 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
                             'estado_redis' => $status
                         ];
 
-                        Log::debug("Datos del reciclador desde Redis", [
+                        Log::info("✅ PERFIL OBTENIDO DESDE REDIS", [
                             'user_id' => $userId,
-                            'reciclador_data_keys' => array_keys($recicladorData),
+                            'reciclador_id' => $reciclador->id,
+                            'reciclador_name' => $reciclador->name,
                             'status_redis' => $status
                         ]);
                     } else {
                         // Fallback: Si no está en Redis, buscar en BD y cachear
-                        Log::info("Reciclador no encontrado en Redis, consultando BD", ['user_id' => $userId]);
+                        Log::info("🗄️ BUSCANDO EN BD", ['user_id' => $userId]);
                         
                         $recicladorDB = DB::table('recicladores as r')
                             ->join('auth_users as a', function ($join) use ($userId) {
@@ -368,6 +406,12 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
                             )
                             ->first();
 
+                        Log::info("🗄️ CONSULTA BD COMPLETADA", [
+                            'user_id' => $userId,
+                            'encontrado_en_bd' => !empty($recicladorDB),
+                            'reciclador_db_id' => $recicladorDB->id ?? 'no_encontrado'
+                        ]);
+
                         if ($recicladorDB) {
                             // Cachear en Redis para próximas consultas (1 hora)
                             $profileData = [
@@ -384,19 +428,18 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
                             $reciclador = $recicladorDB;
                             $reciclador->estado_redis = $status;
                             
-                            Log::info("Reciclador cacheado en Redis desde BD", [
+                            Log::info("💾 RECICLADOR CACHEADO DESDE BD", [
                                 'user_id' => $userId,
                                 'estado_bd' => $recicladorDB->estado
                             ]);
                         } else {
                             $reciclador = null;
-                            Log::warning("Reciclador no encontrado ni en Redis ni en BD", ['user_id' => $userId]);
+                            Log::warning("❌ RECICLADOR NO ENCONTRADO NI EN REDIS NI EN BD", ['user_id' => $userId]);
                         }
                     }
 
-                    // 🔧 FIX: Verificar estado solo desde Redis (disponible)
+                    // 🔧 FIX: Verificar estado y agregar a la colección
                     if ($reciclador && ($status === 'disponible')) {
-
                         // Añadir datos de ubicación y distancia
                         $reciclador->latitude = $locationData['latitude'] ?? 0;
                         $reciclador->longitude = $locationData['longitude'] ?? 0;
@@ -407,27 +450,57 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
 
                         $recicladoresFiltrados->push($reciclador);
 
-                        Log::info("Nuevo reciclador encontrado (estado desde Redis)", [
+                        Log::info("🎉 RECICLADOR AGREGADO A LA LISTA", [
                             'id' => $reciclador->id,
                             'nombre' => $reciclador->name,
                             'estado_redis' => $status,
                             'distancia_km' => $reciclador->distancia,
                             'ciudad' => $ciudadReciclador,
-                            'auth_user_id' => $userId
+                            'auth_user_id' => $userId,
+                            'total_encontrados_hasta_ahora' => $recicladoresFiltrados->count()
                         ]);
 
                         // Interrumpir si ya tenemos suficientes
                         if ($recicladoresFiltrados->count() >= $limite) {
+                            Log::info("🚀 LÍMITE ALCANZADO", [
+                                'limite' => $limite,
+                                'encontrados' => $recicladoresFiltrados->count()
+                            ]);
                             break;
                         }
+                    } else {
+                        Log::warning("❌ RECICLADOR NO CUMPLE CRITERIOS FINALES", [
+                            'user_id' => $userId,
+                            'reciclador_existe' => !empty($reciclador),
+                            'status' => $status,
+                            'status_es_disponible' => $status === 'disponible'
+                        ]);
                     }
+                } else {
+                    Log::warning("❌ NO HAY DATOS DE UBICACIÓN", ['user_id' => $userId]);
                 }
+            } else {
+                Log::info("❌ RECICLADOR NO DISPONIBLE", [
+                    'user_id' => $userId,
+                    'status_actual' => $status,
+                    'requerido' => 'disponible'
+                ]);
             }
         }
 
-        Log::info("Nuevos recicladores de la misma ciudad que cumplen todos los criterios", [
-            'encontrados' => $recicladoresFiltrados->count(),
-            'ciudad_filtro' => $this->ciudad // 🆕 Log de ciudad
+        Log::info("🏁 RESULTADO FINAL DEL PROCESAMIENTO", [
+            'recicladores_procesados_total' => count($recicladorIds),
+            'recicladores_encontrados_finales' => $recicladoresFiltrados->count(),
+            'ciudad_filtro' => $this->ciudad,
+            'recicladores_finales' => $recicladoresFiltrados->map(function($r) {
+                return [
+                    'id' => $r->id,
+                    'name' => $r->name,
+                    'auth_user_id' => $r->auth_user_id,
+                    'distancia_km' => $r->distancia,
+                    'ciudad' => $r->ciudad
+                ];
+            })->toArray()
         ]);
 
         return $recicladoresFiltrados->values();
