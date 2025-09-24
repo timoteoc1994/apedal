@@ -218,6 +218,20 @@ class ActualizarRecicladoresdisponibles implements ShouldQueue
      */
     protected function encontrarNuevosRecicladores($latitud, $longitud, $radioKm = 3, $limite = 10, $excludeIds = [])
     {
+
+         // 🔍 DEBUG: Verificar qué claves existen en Redis
+    $allKeys = Redis::keys('recycler:*');
+    Log::info("Todas las claves de Redis que empiezan con 'recycler:'", [
+        'claves_encontradas' => $allKeys,
+        'total_claves' => count($allKeys)
+    ]);
+    
+    // Verificar si existe la clave GEO
+    $geoExists = Redis::exists('recycler:locations:active');
+    Log::info("¿Existe la clave GEO 'recycler:locations:active'?", [
+        'existe' => $geoExists ? 'SÍ' : 'NO'
+    ]);
+    
         Log::info('Buscando nuevos recicladores cercanos con Redis y filtro de ciudad', [
             'latitud' => $latitud,
             'longitud' => $longitud,
