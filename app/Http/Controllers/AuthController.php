@@ -24,7 +24,8 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-       
+        Log::info('Entrando a register');
+        Log::info('Datos recibidos: ' . json_encode($request->all()));
         try {
             // Validar datos comunes
              $common = $request->validate([
@@ -114,7 +115,6 @@ class AuthController extends Controller
                 $profile = Ciudadano::create($profileData);
                 // Generar código de verificación
                 $verificationCode = rand(100000, 999999);
-
             } elseif ($common['role'] === 'reciclador') {
                 $profileData = $request->validate([
                     'name' => 'required|string|unique:recicladores,name',
@@ -168,10 +168,6 @@ class AuthController extends Controller
                 // Enviar correo con el código
                 Mail::raw("Tu código de verificación es: $verificationCode", function ($message) use ($user) {
                     $message->to($user->email)->subject('Código de verificación de correo');
-                });
-                //Enviar correo a los administradores de Renarec entonces solo enviar que hay un nuevo registro ciudadano con datos iniciales al correo adri@renarec.org
-                Mail::raw("Se ha registrado un nuevo ciudadano.\n\nNombre: {$profileData['name']}\nNickname: {$profileData['nickname']}\nCiudad: {$profileData['ciudad']}\nTeléfono: {$profileData['telefono']}\nTipo de usuario: {$profileData['tipousuario']}", function ($message) {
-                    $message->to('timoteo.cain@ninari.org')->subject('Nuevo registro ciudadano');
                 });
             } else {
                 Log::info('Creando usuario reciclador o asociacion');
