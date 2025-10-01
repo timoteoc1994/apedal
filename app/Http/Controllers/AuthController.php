@@ -26,7 +26,6 @@ class AuthController extends Controller
     {
        
         try {
-            $adminEmail = env('Adminemail', 'timoteo.cain@ninari.org');
             // Validar datos comunes
              $common = $request->validate([
                 'email' => 'required|email',
@@ -171,8 +170,8 @@ class AuthController extends Controller
                     $message->to($user->email)->subject('Código de verificación de correo');
                 });
                 //Enviar correo a los administradores de Renarec entonces solo enviar que hay un nuevo registro ciudadano con datos iniciales al correo adri@renarec.org
-                Mail::raw("Se ha registrado un nuevo ciudadano.\n\nNombre: {$profileData['name']}\nNickname: {$profileData['nickname']}\nCiudad: {$profileData['ciudad']}\nTeléfono: {$profileData['telefono']}\nTipo de usuario: {$profileData['tipousuario']}", function ($message) use ($adminEmail) {
-                    $message->to($adminEmail)->subject('Nuevo registro ciudadano');
+                Mail::raw("Se ha registrado un nuevo ciudadano.\n\nNombre: {$profileData['name']}\nNickname: {$profileData['nickname']}\nCiudad: {$profileData['ciudad']}\nTeléfono: {$profileData['telefono']}\nTipo de usuario: {$profileData['tipousuario']}", function ($message) {
+                    $message->to('timoteo.cain@ninari.org')->subject('Nuevo registro ciudadano');
                 });
             } else {
                 Log::info('Creando usuario reciclador o asociacion');
@@ -185,12 +184,6 @@ class AuthController extends Controller
                 ];
                 $userData['fcm_token'] = null; // Inicializar fcm_token como null
                 $user = AuthUser::create($userData);
-                // Enviar correo a los administradores de Renarec diferenciado el rol si es reciclador o asociacion
-                
-                $role = $common['role'] === 'reciclador' ? 'Reciclador' : 'Asociación';
-                Mail::raw("Se ha registrado un nuevo $role.\n\nNombre: {$profileData['name']}\nNickname: {$profileData['nickname']}\nCiudad: {$profileData['ciudad']}\nTeléfono: {$profileData['telefono']}\nTipo de usuario: {$profileData['tipousuario']}", function ($message) use ($adminEmail) {
-                    $message->to($adminEmail)->subject("Nuevo registro de");
-                });
             }
 
 
