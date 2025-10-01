@@ -7,6 +7,7 @@
         </template>
 
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <p class="text-lg font-bold text-center">Cantidad de usuarios registrados en la plataforma</p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
                
                 <div class="bg-gray-100 p-4 rounded-lg shadow">
@@ -29,6 +30,9 @@
                     <p class="text-center text-black">Ciudadanos</p>
                 </div>
                 </Link>
+            </div>
+            <div>
+                <p class="text-lg font-bold text-center">Cantidad de solicitudes de reciclaje de los ultimos 10 dias</p>
             </div>
             <div class="p-6 border-b border-gray-200">
                 <canvas ref="barChart"></canvas>
