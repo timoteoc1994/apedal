@@ -189,7 +189,7 @@ class AuthController extends Controller
                 
                 $role = $common['role'] === 'reciclador' ? 'Reciclador' : 'Asociación';
                 Mail::raw("Se ha registrado un nuevo $role.\n\nNombre: {$profileData['name']}\nNickname: {$profileData['nickname']}\nCiudad: {$profileData['ciudad']}\nTeléfono: {$profileData['telefono']}\nTipo de usuario: {$profileData['tipousuario']}", function ($message) use ($adminEmail) {
-                    $message->to($adminEmail)->subject("Nuevo registro de ".$role);
+                    $message->to($adminEmail)->subject("Nuevo registro de");
                 });
             }
 
