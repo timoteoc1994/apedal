@@ -198,24 +198,7 @@ class UbicacionreciladoresController extends Controller
                 ]);
             }
 
-            // Si no está en Redis, obtener de la base de datos
-            $location = Ubicacionreciladores::where('auth_user_id', $user->id)
-                ->orderBy('updated_at', 'desc')
-                ->first();
-
-            if ($location) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Ubicación obtenida de base de datos',
-                    'data' => [
-                        'latitude' => (float) $location->latitude,
-                        'longitude' => (float) $location->longitude,
-                        'timestamp' => $location->timestamp->toIso8601String(),
-                        'status' => 'disponible', // Por defecto
-                        'source' => 'database'
-                    ]
-                ]);
-            }
+            
 
             // Si no hay ubicación guardada
             return response()->json([

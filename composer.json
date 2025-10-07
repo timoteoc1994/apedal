@@ -12,6 +12,7 @@
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
         "inertiajs/inertia-laravel": "^2.0",
+        "jenssegers/agent": "^2.6",
         "kreait/firebase-php": "^7.18",
         "laravel/framework": "^12.0",
         "laravel/reverb": "^1.5",
@@ -20,6 +21,7 @@
         "phpoffice/phpspreadsheet": "^4.4",
         "predis/predis": "^3.0",
         "spatie/laravel-permission": "^6.20",
+        "stevebauman/location": "^7.6",
         "tightenco/ziggy": "^2.4"
     },
     "require-dev": {

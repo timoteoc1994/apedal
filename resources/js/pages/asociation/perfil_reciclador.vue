@@ -290,10 +290,10 @@
                         <span class="font-semibold">Peso total revisado:</span> {{ modalSolicitud.peso_total_revisado ?? 'N/A' }} kg
                     </div>
                     <div class="mb-2">
-                        <span class="font-semibold">Comentario reciclador:</span> {{ modalSolicitud.comentario_reciclador ?? 'N/A' }} kg
+                        <span class="font-semibold">Comentario reciclador:</span> {{ modalSolicitud.comentario_reciclador ?? 'N/A' }}
                     </div>
                     <div class="mb-2">
-                        <span class="font-semibold">Comentario ciudadano:</span> {{ modalSolicitud.comentario_ciudadano ?? 'N/A' }} kg
+                        <span class="font-semibold">Comentario ciudadano:</span> {{ modalSolicitud.comentario_ciudadano ?? 'N/A' }}
                     </div>
                     <div class="mb-2">
                         <span class="font-semibold">Calificacion ciudadano:</span> {{ modalSolicitud.calificacion_ciudadano ?? 'N/A' }} puntos

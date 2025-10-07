@@ -69,10 +69,10 @@
                                 <span
                                     :class="[
                                         'rounded-full px-2 py-1 text-xs font-semibold',
-                                        rec.status === 'Activo' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800',
+                                        statusClass(rec.status),
                                     ]"
                                 >
-                                    {{ rec.status}}
+                                    {{ formatStatus(rec.status) }}
                                 </span>
                             </td>
                             <td class="px-6 py-4">{{ formatDate(rec.created_at) }}</td>
@@ -246,5 +246,24 @@ function confirmarEliminar(recicladorId: number) {
             });
         }
     });
+}
+
+// Helpers para el estado
+function statusClass(status: string | null | undefined) {
+    if (!status) return 'bg-gray-100 text-gray-600';
+    const s = String(status).toLowerCase();
+    // Normalizar posibles valores
+    if (s === 'activo' || s === 'disponible') return 'bg-green-100 text-green-800';
+    if (s === 'en_ruta' || s === 'en ruta' || s === 'enruta') return 'bg-blue-100 text-blue-800';
+    if (s === 'inactivo' || s === 'inactivo' || s === 'pendiente') return 'bg-red-100 text-red-800';
+    // fallback
+    return 'bg-gray-100 text-gray-600';
+}
+
+function formatStatus(status: string | null | undefined) {
+    if (!status) return '';
+    // Reemplazar guiones bajos por espacios y capitalizar
+    const s = String(status).replace(/_/g, ' ').toLowerCase();
+    return s.charAt(0).toUpperCase() + s.slice(1);
 }
 </script>

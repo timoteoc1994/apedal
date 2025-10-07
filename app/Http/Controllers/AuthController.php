@@ -162,7 +162,8 @@ class AuthController extends Controller
                     'profile_id' => $profile->id,
                     'email_verification_code' => $verificationCode,
                     'puntos' => $puntos_usuario ?? 0, // Añadir puntos al usuario
-                    
+                    // fcm_token debe permanecer null hasta que el usuario verifique su email
+                    'fcm_token' => null,
                 ];
                 $user = AuthUser::create($userData);
                 // Enviar correo con el código
@@ -177,8 +178,9 @@ class AuthController extends Controller
                     'role' => $common['role'],
                     'profile_id' => $profile->id,
                     'puntos' => $puntos_usuario ?? 0,
+                    // fcm_token debe permanecer null hasta verificación de email
+                    'fcm_token' => null,
                 ];
-                $userData['fcm_token'] = null; // Inicializar fcm_token como null
                 $user = AuthUser::create($userData);
             }
 
@@ -374,12 +376,12 @@ class AuthController extends Controller
             }
 
             //verificar si ya existe un fcm_token eso significa que ya existe una cuenta activa y no puede iniciar sesion
-            if ($user->fcm_token != null) {
+            /* if ($user->fcm_token != null) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Ya existe una cuenta activa'
                 ], 401);
-            }
+            } */
 
             // Obtener datos específicos del perfil
             $profileData = null;

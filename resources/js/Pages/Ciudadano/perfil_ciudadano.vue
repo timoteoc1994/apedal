@@ -39,6 +39,16 @@
                                     PUNTOS
                                 </span>
                             </div>
+                            <div class="relative flex items-center">
+                                <span class="flex items-center gap-2 text-4xl font-extrabold text-green-400 drop-shadow-lg md:text-5xl">
+                                    {{ totalPages ?? 0 }}
+                                </span>
+                                <span
+                                    class="absolute -bottom-5 left-1/2 -translate-x-1/2 rounded-full border-2 border-white bg-green-400 px-3 py-1 text-xs font-bold text-white shadow-lg"
+                                >
+                                    KG
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <!-- Modal de imagen -->
@@ -96,6 +106,9 @@
                         <span class="inline-block rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
                             Fecha de registro: {{ formatDate(ciudadano.created_at) }}
                         </span>
+                        <span class="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                            Material reciclado: {{ estadisticas?.kg_reciclados || 0 }} kg
+                        </span>
                     </div>
                     <div class="mt-2">
                         <span class="font-semibold">Referencia:</span>
@@ -119,9 +132,71 @@
             </div>
 
 
-            <!-- Tabla de solicitudes del ciudadano paginada -->
+            <!-- Filtros y botón de reporte PDF -->
             <div class="mt-10">
-                <h3 class="mb-4 text-xl font-bold text-indigo-700">Solicitudes realizadas</h3>
+                <div class="mb-6 flex flex-col gap-4 rounded-xl bg-white p-6 shadow-lg md:flex-row md:items-end">
+                    <div class="flex-1">
+                        <h3 class="mb-4 text-xl font-bold text-indigo-700">Generar reporte</h3>
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                            
+                            
+                            <!-- Filtro fecha desde -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Fecha desde</label>
+                                <input
+                                    v-model="fechaDesde"
+                                    @change="aplicarFiltros"
+                                    type="date"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                />
+                            </div>
+                            
+                            <!-- Filtro fecha hasta -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Fecha hasta</label>
+                                <input
+                                    v-model="fechaHasta"
+                                    @change="aplicarFiltros"
+                                    type="date"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                />
+                            </div>
+                            
+                            <!-- Botón limpiar filtros -->
+                            <div class="flex items-end">
+                                <button
+                                    @click="limpiarFiltros"
+                                    class="w-full rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
+                                >
+                                    Limpiar filtros
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón generar PDF -->
+                    <div class="flex-shrink-0">
+                        <button
+                            @click="generarReportePDF"
+                            class="flex items-center gap-2 rounded-md bg-red-600 px-6 py-3 text-white shadow-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Generar PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de solicitudes del ciudadano paginada -->
+            <div class="mt-4">
+                <h3 class="mb-4 text-xl font-bold text-indigo-700">
+                    Solicitudes realizadas 
+                    <span class="text-sm font-normal text-gray-600">
+                        ({{ solicitudes?.total ?? 0 }} total{{ filtroEstado || fechaDesde || fechaHasta ? ' - filtradas' : '' }})
+                    </span>
+                </h3>
                 <div class="overflow-x-auto rounded-xl shadow">
                     <table class="min-w-full bg-white text-sm">
                         <thead class="bg-indigo-100 text-indigo-700">
@@ -390,9 +465,16 @@ const props = defineProps({
     ciudadano: Object,
     estadisticas: Object,
     solicitudes: Object,
+    filtros: Object,
+    total_recogido: Number,
 });
 
 const ciudadano = props.ciudadano;
+
+// Estados reactivos para los filtros
+const filtroEstado = ref(props.filtros?.estado || '');
+const fechaDesde = ref(props.filtros?.fecha_desde || '');
+const fechaHasta = ref(props.filtros?.fecha_hasta || '');
 
 const modalImagen = ref<string | null>(null);
 function abrirModalImagen(url: string) {
@@ -474,4 +556,50 @@ const displayedPages = computed(() => {
     if (range[range.length - 1] < total) range.push(total);
     return range.filter((v, i, arr) => i === 0 || v !== arr[i - 1]);
 });
+
+// Funciones para filtros
+function aplicarFiltros() {
+    const params: any = {
+        id: ciudadano?.id,
+    };
+    
+    
+    if (fechaDesde.value) {
+        params.fecha_desde = fechaDesde.value;
+    }
+    
+    if (fechaHasta.value) {
+        params.fecha_hasta = fechaHasta.value;
+    }
+    
+    router.get(route('ciudadano.perfil_ciudadano'), params, {
+        preserveState: true,
+        preserveScroll: true,
+    });
+}
+
+function limpiarFiltros() {
+    fechaDesde.value = '';
+    fechaHasta.value = '';
+    aplicarFiltros();
+}
+
+function generarReportePDF() {
+    const params = new URLSearchParams();
+    
+    if (filtroEstado.value) {
+        params.append('estado', filtroEstado.value);
+    }
+    
+    if (fechaDesde.value) {
+        params.append('fecha_desde', fechaDesde.value);
+    }
+    
+    if (fechaHasta.value) {
+        params.append('fecha_hasta', fechaHasta.value);
+    }
+    
+    const url = route('ciudadano.generar_reporte_pdf', { id: ciudadano?.id }) + '?' + params.toString();
+    window.open(url, '_blank');
+}
 </script>

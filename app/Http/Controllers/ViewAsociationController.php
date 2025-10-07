@@ -62,9 +62,13 @@ class ViewAsociationController extends Controller
         $asociation = AuthUser::where('role', 'asociacion')
             ->with('asociacion')
             ->find($request->id);
+        //verificar si al menso tiene una zona
+        $countzonas=Zona::where('asociacion_id',$asociation->profile_id)->count();
+
         return Inertia::render('asociation/show', [
             'asociation' => $asociation,
             'ciudades' => $ciudades,
+            'countzonas'=>$countzonas,
         ]);
     }
     public function showrecicladores(Request $request)

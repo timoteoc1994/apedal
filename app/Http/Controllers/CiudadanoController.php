@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Redirect;  // ← importa el facade
 use App\Models\AuthUser;
 use App\Models\SolicitudRecoleccion;
+use App\Models\Material;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -64,11 +65,31 @@ class CiudadanoController extends Controller
 
     public function perfil_ciudadano(Request $request)
     {
-     
         $ciudadano = Ciudadano::with('authUser')->find($request->id);
 
-        //calcular estadisticas de las solicitudes
-        $estadisticas=array();
+        // Obtener filtros
+        $estado = $request->input('estado');
+        $fecha_desde = $request->input('fecha_desde');
+        $fecha_hasta = $request->input('fecha_hasta');
+
+        // Query base para solicitudes
+        $solicitudesQuery = SolicitudRecoleccion::where('user_id', $ciudadano->authUser->id);
+
+        // Aplicar filtros si existen
+        if ($estado && $estado !== 'todos') {
+            $solicitudesQuery->where('estado', $estado);
+        }
+
+        if ($fecha_desde) {
+            $solicitudesQuery->whereDate('created_at', '>=', $fecha_desde);
+        }
+
+        if ($fecha_hasta) {
+            $solicitudesQuery->whereDate('created_at', '<=', $fecha_hasta);
+        }
+
+        // Calcular estadisticas de las solicitudes (sin filtros para tener totales generales)
+        $estadisticas = array();
         $estadisticas['total_solicitudes'] = SolicitudRecoleccion::where('user_id', $ciudadano->authUser->id)->count();
         $estadisticas['completadas'] = SolicitudRecoleccion::where('user_id', $ciudadano->authUser->id)->where('estado', 'completado')->count();
         $estadisticas['pendientes'] = SolicitudRecoleccion::where('user_id', $ciudadano->authUser->id)->where('estado', 'pendiente')->count();
@@ -77,16 +98,41 @@ class CiudadanoController extends Controller
         $estadisticas['buscando_reciclador'] = SolicitudRecoleccion::where('user_id', $ciudadano->authUser->id)->where('estado', 'buscando_reciclador')->count();
         $estadisticas['cancelado'] = SolicitudRecoleccion::where('user_id', $ciudadano->authUser->id)->where('estado', 'cancelado')->count();
 
-        // Buscar solicitudes de reciclador paginadas (10 por página)
-        $solicitudes = SolicitudRecoleccion::where('user_id', $ciudadano->authUser->id)
+        $total_recogido=SolicitudRecoleccion::where('user_id', $ciudadano->authUser->id)->where('estado', 'completado')->sum('peso_total_revisado');
+
+        // Calcular total de kg reciclados (solo solicitudes completadas)
+        $kgReciclados = SolicitudRecoleccion::where('user_id', $ciudadano->authUser->id)
+            ->where('estado', 'completado')
+            ->whereNotNull('peso_total_revisado')
+            ->sum('peso_total_revisado');
+
+        // Si no hay peso_total_revisado, usar peso_total
+        if ($kgReciclados == 0) {
+            $kgReciclados = SolicitudRecoleccion::where('user_id', $ciudadano->authUser->id)
+                ->where('estado', 'completado')
+                ->whereNotNull('peso_total')
+                ->sum('peso_total');
+        }
+
+        $estadisticas['kg_reciclados'] = round($kgReciclados, 2);
+
+        // Buscar solicitudes filtradas y paginadas (10 por página)
+        $solicitudes = $solicitudesQuery
             ->with(['materiales', 'authUser.reciclador'])
             ->orderBy('created_at', 'desc')
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString(); // Mantener parámetros de filtros en paginación
             
         return Inertia::render('Ciudadano/perfil_ciudadano', [
             'ciudadano' => $ciudadano,
             'estadisticas' => $estadisticas,
             'solicitudes' => $solicitudes,
+            'total_recogido' => $total_recogido,
+            'filtros' => [
+                'estado' => $estado,
+                'fecha_desde' => $fecha_desde,
+                'fecha_hasta' => $fecha_hasta,
+            ],
         ]);
     }
 
@@ -467,6 +513,155 @@ class CiudadanoController extends Controller
                 'message' => 'Error al obtener asociaciones',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Generar reporte PDF del ciudadano
+     */
+    public function generarReportePDF(Request $request, $id)
+    {
+        //dd($request->all());
+        try {
+            $ciudadano = Ciudadano::with('authUser')->findOrFail($id);
+
+            // Obtener filtros del request
+            $estado = $request->input('estado');
+            $fecha_desde = $request->input('fecha_desde');
+            $fecha_hasta = $request->input('fecha_hasta');
+
+
+            // Query base para solicitudes
+            $solicitudesQuery = SolicitudRecoleccion::where('user_id', $ciudadano->authUser->id);
+
+            if ($fecha_desde) {
+                $solicitudesQuery->whereDate('fecha', '>=', $fecha_desde);
+            }
+
+            if ($fecha_hasta) {
+                $solicitudesQuery->whereDate('fecha', '<=', $fecha_hasta);
+            }
+
+            // Obtener solicitudes con materiales
+            $solicitudes = $solicitudesQuery
+                ->with(['materiales'])
+                ->get();
+
+            // Calcular estadísticas
+            $estadisticas = [
+                'total_solicitudes' => $solicitudes->count(),
+                'completadas' => $solicitudes->where('estado', 'completado')->count(),
+                'pendientes' => $solicitudes->where('estado', 'pendiente')->count(),
+                'asignadas' => $solicitudes->where('estado', 'asignado')->count(),
+                'en_camino' => $solicitudes->where('estado', 'en_camino')->count(),
+                'buscando_reciclador' => $solicitudes->where('estado', 'buscando_reciclador')->count(),
+                'canceladas' => $solicitudes->where('estado', 'cancelado')->count(),
+            ];
+
+            // Calcular kg reciclados total (solo completadas)
+            $solicitudesCompletadas = $solicitudes->where('estado', 'completado');
+            $kgReciclados = $solicitudesCompletadas->sum(function ($solicitud) {
+                return $solicitud->peso_total_revisado;
+            });
+
+            // Calcular materiales por tipo (solo solicitudes completadas)
+            $materialesPorTipo = [
+                'papel' => 0,
+                'tetrapak' => 0,
+                'botellasPET' => 0,
+                'plasticosSuaves' => 0,
+                'plasticosSoplado' => 0,
+                'plasticosRigidos' => 0,
+                'vidrio' => 0,
+                'pilas' => 0,
+                'latas' => 0,
+                'metales' => 0,
+                'electrodomesticos' => 0,
+                'electronicos' => 0,
+            ];
+
+            // Debug: Ver qué tipos de materiales existen exactamente
+            $tiposUnicos = [];
+            foreach ($solicitudesCompletadas as $solicitud) {
+                foreach ($solicitud->materiales as $material) {
+                    $tiposUnicos[] = $material->tipo;
+                }
+            }
+            
+            Log::info('Tipos de materiales encontrados:', [
+                'ciudadano_id' => $ciudadano->id,
+                'tipos_unicos' => array_unique($tiposUnicos),
+                'solicitudes_completadas' => $solicitudesCompletadas->count()
+            ]);
+
+            // Sumar directamente por tipo exacto
+            foreach ($solicitudesCompletadas as $solicitud) {
+                foreach ($solicitud->materiales as $material) {
+                    $peso = $material->peso_revisado ?? $material->peso ?? 0;
+                    $tipo = $material->tipo; // Sin convertir a minúsculas primero
+                    
+                    Log::info('Procesando material:', [
+                        'solicitud_id' => $solicitud->id,
+                        'tipo_original' => $tipo,
+                        'peso_revisado' => $material->peso_revisado,
+                        'peso' => $material->peso,
+                        'peso_final' => $peso
+                    ]);
+                    
+                    // Mapear directamente por los tipos que tienes en tu array
+                    if (isset($materialesPorTipo[$tipo])) {
+                        $materialesPorTipo[$tipo] += $peso;
+                    } else {
+                        Log::warning('Tipo de material no encontrado en array:', [
+                            'tipo' => $tipo,
+                            'tipos_disponibles' => array_keys($materialesPorTipo)
+                        ]);
+                    }
+                }
+            }
+
+            // Preparar datos para el PDF
+            $datosPDF = [
+                'nombre' => $ciudadano->name,
+                'email' => $ciudadano->authUser->email,
+                'telefono' => $ciudadano->telefono,
+                'ciudad' => $ciudadano->ciudad,
+                'puntos_actuales' => $ciudadano->authUser->puntos ?? 0,
+                'solicitudes_completadas' => $estadisticas['completadas'],
+                'solicitudes_pendientes' => $estadisticas['pendientes'],
+                'solicitudes_canceladas' => $estadisticas['canceladas'],
+                'total_solicitudes' => $estadisticas['total_solicitudes'],
+                'suma_peso_kg' => round($kgReciclados, 2),
+                'papel' => round($materialesPorTipo['papel'], 2),
+                'tetrapak' => round($materialesPorTipo['tetrapak'], 2),
+                'botellasPET' => round($materialesPorTipo['botellasPET'], 2),
+                'plasticosSuaves' => round($materialesPorTipo['plasticosSuaves'], 2),
+                'plasticosSoplado' => round($materialesPorTipo['plasticosSoplado'], 2),
+                'plasticosRigidos' => round($materialesPorTipo['plasticosRigidos'], 2),
+                'vidrio' => round($materialesPorTipo['vidrio'], 2),
+                'pilas' => round($materialesPorTipo['pilas'], 2),
+                'latas' => round($materialesPorTipo['latas'], 2),
+                'metales' => round($materialesPorTipo['metales'], 2),
+                'electrodomesticos' => round($materialesPorTipo['electrodomesticos'], 2),
+                'eletronicos' => round($materialesPorTipo['electronicos'], 2),
+                'filtros' => [
+                    'estado' => $estado,
+                    'fecha_desde' => $fecha_desde,
+                    'fecha_hasta' => $fecha_hasta,
+                ]
+            ];
+
+            // Generar PDF
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.reporte_ciudadano', $datosPDF);
+            $pdf->setPaper('A4', 'portrait');
+
+            $nombreArchivo = 'reporte_ciudadano_' . $ciudadano->name . '_' . date('Y-m-d') . '.pdf';
+            
+            return $pdf->download($nombreArchivo);
+
+        } catch (\Exception $e) {
+            Log::error('Error al generar reporte PDF del ciudadano: ' . $e->getMessage());
+            return back()->with('errorMessage', 'Error al generar el reporte PDF');
         }
     }
 }

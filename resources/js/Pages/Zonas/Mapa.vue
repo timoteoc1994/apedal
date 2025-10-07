@@ -6,8 +6,7 @@
 
 .mapa-fullscreen {
     position: relative;
-    height: 70vh;
-    min-height: 400px;
+    height: 100%;
     width: 100%;
     z-index: 5;
 }
@@ -27,7 +26,7 @@
 .legend-overlay {
     position: absolute;
     bottom: 20px;
-    right: 20px;
+    left: 20px;
     z-index: 1000;
     background-color: white;
     border-radius: 8px;
@@ -71,7 +70,7 @@
         <template #header>
             <Link class="text-indigo-600 hover:text-indigo-500" :href="route('zonas.index')">Zonas/</Link> Mapa de Zonas
         </template>
-                <div class="relative w-full h-[75vh] min-h-[400px]">
+                <div class="relative w-full" style="height: calc(100vh - 140px); min-height: 600px;">
                 <MapaZonas 
                     :zonas="zonas" 
                     :asociaciones="asociaciones" 

@@ -94,6 +94,8 @@ Route::middleware(['auth', 'role:Administrador,Moderador'])->group(function () {
     Route::get('/ciudadanos', [CiudadanoController::class, 'index'])->name('ciudadano.index');
     // Ruta para mostrar perfil de ciudadano
     Route::get('/ciudadanos/{id}', [CiudadanoController::class, 'perfil_ciudadano'])->name('ciudadano.perfil');
+    // Ruta para generar PDF del ciudadano
+    Route::get('/ciudadanos/{id}/reporte-pdf', [CiudadanoController::class, 'generarReportePDF'])->name('ciudadano.generar_reporte_pdf');
     // Ruta para eliminar un ciudadano
     Route::delete('/ciudadanos/{id}', [CiudadanoController::class, 'deleteCiudadano'])->name('ciudadano.delete');
     // Ruta para mostrar el formulario de edición
